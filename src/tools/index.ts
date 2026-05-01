@@ -6,6 +6,9 @@ export { ReadContentTool } from './ReadContentTool';
 export { ScreenshotTool } from './ScreenshotTool';
 export { WaitForSelectorTool } from './WaitForSelectorTool';
 export { SelectOptionTool } from './SelectOptionTool';
+export { HoverTool } from './HoverTool';
+export { ScrollTool } from './ScrollTool';
+export { KeyPressTool } from './KeyPressTool';
 
 import { NavigationTool } from './NavigationTool';
 import { ClickTool } from './ClickTool';
@@ -14,6 +17,9 @@ import { ReadContentTool } from './ReadContentTool';
 import { ScreenshotTool } from './ScreenshotTool';
 import { WaitForSelectorTool } from './WaitForSelectorTool';
 import { SelectOptionTool } from './SelectOptionTool';
+import { HoverTool } from './HoverTool';
+import { ScrollTool } from './ScrollTool';
+import { KeyPressTool } from './KeyPressTool';
 import { AgentTool } from './types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -25,4 +31,7 @@ export const builtinTools: AgentTool<any, any>[] = [
   ScreenshotTool,
   WaitForSelectorTool,
   SelectOptionTool,
+  HoverTool,
+  ScrollTool,
+  KeyPressTool,
 ];

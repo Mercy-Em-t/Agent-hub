@@ -5,6 +5,9 @@ import { ReadContentTool } from '../../src/tools/ReadContentTool';
 import { ScreenshotTool } from '../../src/tools/ScreenshotTool';
 import { WaitForSelectorTool } from '../../src/tools/WaitForSelectorTool';
 import { SelectOptionTool } from '../../src/tools/SelectOptionTool';
+import { HoverTool } from '../../src/tools/HoverTool';
+import { ScrollTool } from '../../src/tools/ScrollTool';
+import { KeyPressTool } from '../../src/tools/KeyPressTool';
 import { PageController } from '../../src/browser/PageController';
 
 /** Build a minimal mock PageController so tests don't need a real browser. */
@@ -15,6 +18,8 @@ function mockPage(overrides: Record<string, unknown> = {}): PageController {
     fill: jest.fn().mockResolvedValue(undefined),
     select: jest.fn().mockResolvedValue(undefined),
     pressKey: jest.fn().mockResolvedValue(undefined),
+    hover: jest.fn().mockResolvedValue(undefined),
+    scroll: jest.fn().mockResolvedValue(undefined),
     snapshot: jest.fn().mockResolvedValue({
       url: 'https://example.com',
       title: 'Example',
@@ -168,5 +173,121 @@ describe('SelectOptionTool', () => {
 
     expect(result.success).toBe(true);
     expect(page.select).toHaveBeenCalledWith({ selector: '#country', values: ['US'] });
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────── HoverTool
+describe('HoverTool', () => {
+  it('hovers over an element and returns a snapshot', async () => {
+    const page = mockPage();
+    const result = await HoverTool.execute({ selector: 'nav .dropdown' }, page);
+
+    expect(result.success).toBe(true);
+    expect(page.hover).toHaveBeenCalledWith({ selector: 'nav .dropdown' });
+    expect(result.data).toMatchObject({ url: 'https://example.com' });
+  });
+
+  it('returns an error when the element is not found', async () => {
+    const page = mockPage({
+      hover: jest.fn().mockRejectedValue(new Error('Element not found')),
+    });
+    const result = await HoverTool.execute({ selector: '.missing' }, page);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/Element not found/);
+  });
+
+  it('rejects empty selectors', () => {
+    const parsed = HoverTool.inputSchema.safeParse({ selector: '' });
+    expect(parsed.success).toBe(false);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────── ScrollTool
+describe('ScrollTool', () => {
+  it('scrolls the window downward and returns a snapshot', async () => {
+    const page = mockPage();
+    const result = await ScrollTool.execute({ direction: 'down', distance: 300 }, page);
+
+    expect(result.success).toBe(true);
+    expect(page.scroll).toHaveBeenCalledWith({
+      direction: 'down',
+      distance: 300,
+      selector: undefined,
+    });
+    expect(result.data).toMatchObject({ url: 'https://example.com' });
+  });
+
+  it('scrolls a specific element when selector is provided', async () => {
+    const page = mockPage();
+    const result = await ScrollTool.execute(
+      { direction: 'up', selector: '.sidebar' },
+      page,
+    );
+
+    expect(result.success).toBe(true);
+    expect(page.scroll).toHaveBeenCalledWith({
+      direction: 'up',
+      distance: undefined,
+      selector: '.sidebar',
+    });
+  });
+
+  it('returns an error when scrolling fails', async () => {
+    const page = mockPage({
+      scroll: jest.fn().mockRejectedValue(new Error('Scroll failed')),
+    });
+    const result = await ScrollTool.execute({ direction: 'down' }, page);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/Scroll failed/);
+  });
+
+  it('rejects invalid direction values', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parsed = ScrollTool.inputSchema.safeParse({ direction: 'sideways' } as any);
+    expect(parsed.success).toBe(false);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────── KeyPressTool
+describe('KeyPressTool', () => {
+  it('presses a key once by default', async () => {
+    const page = mockPage();
+    const result = await KeyPressTool.execute({ key: 'Enter' }, page);
+
+    expect(result.success).toBe(true);
+    expect(page.pressKey).toHaveBeenCalledTimes(1);
+    expect(page.pressKey).toHaveBeenCalledWith('Enter');
+    expect(result.data).toEqual({ key: 'Enter', count: 1 });
+  });
+
+  it('presses a key the specified number of times', async () => {
+    const page = mockPage();
+    const result = await KeyPressTool.execute({ key: 'Tab', count: 3 }, page);
+
+    expect(result.success).toBe(true);
+    expect(page.pressKey).toHaveBeenCalledTimes(3);
+    expect(result.data).toEqual({ key: 'Tab', count: 3 });
+  });
+
+  it('returns an error when pressKey throws', async () => {
+    const page = mockPage({
+      pressKey: jest.fn().mockRejectedValue(new Error('Key failed')),
+    });
+    const result = await KeyPressTool.execute({ key: 'Escape' }, page);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/Key failed/);
+  });
+
+  it('rejects empty key values', () => {
+    const parsed = KeyPressTool.inputSchema.safeParse({ key: '' });
+    expect(parsed.success).toBe(false);
+  });
+
+  it('rejects count greater than 20', () => {
+    const parsed = KeyPressTool.inputSchema.safeParse({ key: 'a', count: 21 });
+    expect(parsed.success).toBe(false);
   });
 });

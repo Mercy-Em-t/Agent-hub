@@ -156,7 +156,7 @@ Returns a `201` with `siteId` and `apiKey`. Status is `pending`.
 
 #### `POST /agents/run`
 
-Run a task synchronously. Requires a registered + approved agent and a registered + approved target site.
+Run a task **synchronously**. Requires a registered + approved agent and a registered + approved target site.
 
 ```json
 {
@@ -205,6 +205,69 @@ Run a task synchronously. Requires a registered + approved agent and a registere
 }
 ```
 
+---
+
+#### `POST /agents/run/async`
+
+Submit a task for **asynchronous** execution and return immediately.  
+Uses the same request body as `POST /agents/run`.
+
+**Response — HTTP 202**
+
+```json
+{ "jobId": "<uuid>", "status": "queued" }
+```
+
+Poll `GET /agents/jobs/:jobId` until `status` is `"completed"` or `"failed"`.
+
+---
+
+#### `GET /agents/jobs/:jobId`
+
+Poll for the status and results of an async job.
+
+**Response while running**
+
+```json
+{ "jobId": "...", "agentId": "...", "createdAt": "...", "status": "running" }
+```
+
+**Response when completed**
+
+```json
+{
+  "jobId": "...",
+  "agentId": "...",
+  "createdAt": "...",
+  "finishedAt": "...",
+  "status": "completed",
+  "results": [ ... ]
+}
+```
+
+**Response when failed**
+
+```json
+{
+  "jobId": "...",
+  "agentId": "...",
+  "createdAt": "...",
+  "finishedAt": "...",
+  "status": "failed",
+  "error": "Step 1 (tool=\"click\") failed: Element not found"
+}
+```
+
+Returns HTTP **404** if the `jobId` is unknown.
+
+---
+
+#### `GET /agents/jobs`
+
+List all submitted jobs (all statuses).
+
+---
+
 #### `GET /agents/sessions` — list active sessions
 
 ---
@@ -220,6 +283,9 @@ Run a task synchronously. Requires a registered + approved agent and a registere
 | `screenshot` | Full-page PNG as base64 |
 | `waitForSelector` | Wait for an element to become visible |
 | `selectOption` | Choose option(s) in a `<select>` dropdown |
+| `hover` | Move the mouse over an element (reveals tooltips / hover menus) |
+| `scroll` | Scroll the page window or a specific element in any direction |
+| `keyPress` | Press a keyboard key one or more times (Enter, Tab, ArrowDown, …) |
 
 ---
 
@@ -304,8 +370,9 @@ src/
 ├── gateway/        AgentGateway — entry-gate; enforces all governance rules before any run
 ├── agents/         BaseAgent (abstract) + WebAgent (step-by-step runner)
 ├── browser/        BrowserManager + PageController (Playwright wrapper)
-├── tools/          Seven built-in tools, each with Zod input validation
+├── tools/          Ten built-in tools, each with Zod input validation
 ├── sessions/       SessionManager — concurrent isolated browser contexts
+├── jobs/           JobStore — async task tracking (queued/running/completed/failed)
 ├── api/            Express REST API (server + routes: registry, agents)
 ├── config/         Default configuration
 └── index.ts        Entry-point (server) + library re-exports
@@ -316,6 +383,7 @@ tests/
 ├── agents/         Agent unit tests
 ├── tools/          Tool unit tests (mock PageController)
 ├── sessions/       SessionManager unit tests
-└── api/            API integration tests (supertest, includes gateway flow)
+├── jobs/           JobStore unit tests
+└── api/            API integration tests (supertest, includes gateway + async job flow)
 ```
 

@@ -22,6 +22,20 @@ export interface SelectOptions {
   values: string[];
 }
 
+export interface HoverOptions {
+  selector: string;
+}
+
+export type ScrollDirection = 'up' | 'down' | 'left' | 'right';
+
+export interface ScrollOptions {
+  /** If omitted, the page root is scrolled. */
+  selector?: string;
+  direction: ScrollDirection;
+  /** Number of pixels to scroll. Defaults to 500. */
+  distance?: number;
+}
+
 export interface PageSnapshot {
   url: string;
   title: string;
@@ -53,6 +67,37 @@ export class PageController {
   async fill(options: FillOptions): Promise<void> {
     const locator = this.page.locator(options.selector).first();
     await locator.fill(options.value);
+  }
+
+  /** Hover the mouse over an element identified by a CSS selector. */
+  async hover(options: HoverOptions): Promise<void> {
+    const locator = this.page.locator(options.selector).first();
+    await locator.hover();
+  }
+
+  /**
+   * Scroll the page or a specific element in the given direction.
+   *
+   * @param options.selector  CSS selector of the element to scroll (omit to scroll the window).
+   * @param options.direction One of "up" | "down" | "left" | "right".
+   * @param options.distance  Pixels to scroll (defaults to 500).
+   */
+  async scroll(options: ScrollOptions): Promise<void> {
+    const distance = options.distance ?? 500;
+    const deltaX = options.direction === 'right' ? distance : options.direction === 'left' ? -distance : 0;
+    const deltaY = options.direction === 'down' ? distance : options.direction === 'up' ? -distance : 0;
+
+    if (options.selector) {
+      await this.page.locator(options.selector).first().hover();
+      await this.page.mouse.wheel(deltaX, deltaY);
+    } else {
+      await this.page.evaluate(
+        ({ dx, dy }: { dx: number; dy: number }) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (globalThis as any).window?.scrollBy(dx, dy) ?? (globalThis as any).scrollBy?.(dx, dy),
+        { dx: deltaX, dy: deltaY },
+      );
+    }
   }
 
   /** Select one or more options in a <select> element. */

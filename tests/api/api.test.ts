@@ -4,6 +4,7 @@ import { SessionManager } from '../../src/sessions/SessionManager';
 import { BrowserManager } from '../../src/browser/BrowserManager';
 import { AgentRegistry } from '../../src/registry/AgentRegistry';
 import { SiteRegistry } from '../../src/registry/SiteRegistry';
+import { JobStore } from '../../src/jobs/JobStore';
 import type { BrowserContext } from 'playwright';
 
 function buildApp() {
@@ -17,11 +18,13 @@ function buildApp() {
         first: jest.fn().mockReturnValue({
           click: jest.fn().mockResolvedValue(undefined),
           fill: jest.fn().mockResolvedValue(undefined),
+          hover: jest.fn().mockResolvedValue(undefined),
           textContent: jest.fn().mockResolvedValue('text'),
         }),
       }),
       selectOption: jest.fn().mockResolvedValue(undefined),
       keyboard: { press: jest.fn().mockResolvedValue(undefined) },
+      mouse: { wheel: jest.fn().mockResolvedValue(undefined) },
       waitForSelector: jest.fn().mockResolvedValue(null),
       screenshot: jest.fn().mockResolvedValue(Buffer.from('png')),
       evaluate: jest.fn().mockResolvedValue('Hello world'),
@@ -43,8 +46,14 @@ function buildApp() {
   const sessions = new SessionManager(browserManager);
   const agentRegistry = new AgentRegistry();
   const siteRegistry = new SiteRegistry();
+  const jobStore = new JobStore();
 
-  return { app: createApp(sessions, agentRegistry, siteRegistry), agentRegistry, siteRegistry };
+  return {
+    app: createApp(sessions, agentRegistry, siteRegistry, jobStore),
+    agentRegistry,
+    siteRegistry,
+    jobStore,
+  };
 }
 
 /** Helper: register + approve an agent and site, return creds. */
@@ -267,6 +276,81 @@ describe('Registry – sites', () => {
     const { app } = buildApp();
     const res = await request(app).get('/registry/sites/non-existent');
     expect(res.status).toBe(404);
+  });
+});
+
+// ──────────────────────────────────────────────── /agents/run/async + /agents/jobs
+describe('Async job execution', () => {
+  it('POST /agents/run/async returns 202 with a jobId', async () => {
+    const { app, agentRegistry, siteRegistry } = buildApp();
+    const { agentId, apiKey } = setupApprovedAgentAndSite(agentRegistry, siteRegistry);
+
+    const res = await request(app)
+      .post('/agents/run/async')
+      .send({ agentId, apiKey, startUrl: 'https://example.com', steps: [] });
+
+    expect(res.status).toBe(202);
+    expect(res.body.jobId).toBeTruthy();
+    expect(res.body.status).toBe('queued');
+  });
+
+  it('POST /agents/run/async returns 403 when gateway denies', async () => {
+    const { app } = buildApp();
+    const res = await request(app)
+      .post('/agents/run/async')
+      .send({
+        agentId: '00000000-0000-0000-0000-000000000000',
+        apiKey: 'bad',
+        startUrl: 'https://example.com',
+      });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('POST /agents/run/async returns 400 for invalid payload', async () => {
+    const { app } = buildApp();
+    const res = await request(app)
+      .post('/agents/run/async')
+      .send({ startUrl: 'not-a-url' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('GET /agents/jobs/:jobId returns 404 for unknown job', async () => {
+    const { app } = buildApp();
+    const res = await request(app).get('/agents/jobs/non-existent');
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/not found/);
+  });
+
+  it('GET /agents/jobs/:jobId returns the job record after submission', async () => {
+    const { app, agentRegistry, siteRegistry } = buildApp();
+    const { agentId, apiKey } = setupApprovedAgentAndSite(agentRegistry, siteRegistry);
+
+    const submitRes = await request(app)
+      .post('/agents/run/async')
+      .send({ agentId, apiKey, startUrl: 'https://example.com', steps: [] });
+
+    const { jobId } = submitRes.body;
+    const pollRes = await request(app).get(`/agents/jobs/${jobId}`);
+
+    expect(pollRes.status).toBe(200);
+    expect(pollRes.body.jobId).toBe(jobId);
+    expect(pollRes.body.agentId).toBe(agentId);
+    expect(['queued', 'running', 'completed']).toContain(pollRes.body.status);
+  });
+
+  it('GET /agents/jobs returns the list of all submitted jobs', async () => {
+    const { app, agentRegistry, siteRegistry } = buildApp();
+    const { agentId, apiKey } = setupApprovedAgentAndSite(agentRegistry, siteRegistry);
+
+    await request(app)
+      .post('/agents/run/async')
+      .send({ agentId, apiKey, startUrl: 'https://example.com', steps: [] });
+
+    const res = await request(app).get('/agents/jobs');
+    expect(res.status).toBe(200);
+    expect(res.body.jobs).toHaveLength(1);
   });
 });
 

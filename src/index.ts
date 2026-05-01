@@ -15,7 +15,10 @@
  *  PATCH /registry/sites/:id/approve  – approve a site
  *  PATCH /registry/sites/:id/revoke   – revoke a site
  *
- *  POST /agents/run                   – run a task (requires agentId + apiKey)
+ *  POST /agents/run                   – run a task synchronously (requires agentId + apiKey)
+ *  POST /agents/run/async             – submit a task for async execution; returns jobId
+ *  GET  /agents/jobs/:jobId           – poll async job status and results
+ *  GET  /agents/jobs                  – list all submitted jobs
  *  GET  /agents/sessions              – list active sessions
  *  GET  /health                       – service health-check
  *
@@ -38,6 +41,7 @@ export * from './tools';
 export * from './sessions';
 export * from './registry';
 export * from './gateway';
+export * from './jobs';
 export { createApp } from './api/server';
 
 async function main() {
@@ -61,7 +65,10 @@ async function main() {
     console.log('    PATCH  /registry/sites/:id/approve   – approve a site');
     console.log('');
     console.log('  Operations (gateway-protected):');
-    console.log('    POST   /agents/run                   – run a task');
+    console.log('    POST   /agents/run                   – run a task (synchronous)');
+    console.log('    POST   /agents/run/async             – submit a task (async, returns jobId)');
+    console.log('    GET    /agents/jobs/:jobId            – poll async job status');
+    console.log('    GET    /agents/jobs                   – list all submitted jobs');
     console.log('    GET    /agents/sessions               – list sessions');
     console.log('');
     console.log('    GET    /health                        – health check');

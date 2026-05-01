@@ -3,8 +3,13 @@ import { z } from 'zod';
 import { SessionManager } from '../../sessions/SessionManager';
 import { WebAgent } from '../../agents/WebAgent';
 import { AgentGateway } from '../../gateway/AgentGateway';
+import { JobStore } from '../../jobs/JobStore';
 
-export function agentRouter(sessions: SessionManager, gateway: AgentGateway): Router {
+export function agentRouter(
+  sessions: SessionManager,
+  gateway: AgentGateway,
+  jobStore: JobStore,
+): Router {
   const router = Router();
 
   // ------------------------------------------------------------------ POST /agents/run
@@ -89,6 +94,93 @@ export function agentRouter(sessions: SessionManager, gateway: AgentGateway): Ro
     }
   });
 
+  // ------------------------------------------------------------------ POST /agents/run/async
+  // Submit a task for async execution.  Returns a jobId immediately.
+  // The caller polls GET /agents/jobs/:jobId for status and results.
+  // ------------------------------------------------------------------
+  router.post('/run/async', async (req: Request, res: Response) => {
+    const parsed = RunTaskSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+
+    const { agentId, apiKey, startUrl, steps, metadata } = parsed.data;
+
+    // ── Gateway check ─────────────────────────────────────────────────────
+    const intendedTools = steps.map((s) => s.tool);
+    const gatewayResult = gateway.check(agentId, apiKey, startUrl, intendedTools);
+
+    if (!gatewayResult.allowed) {
+      res.status(403).json({
+        error: 'Gateway denied the request.',
+        reason: gatewayResult.reason,
+      });
+      return;
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
+    const job = jobStore.create(agentId);
+    res.status(202).json({ jobId: job.jobId, status: 'queued' });
+
+    // Run in the background — do not await
+    (async () => {
+      let sessionId: string | undefined;
+      jobStore.setRunning(job.jobId);
+      try {
+        const session = await sessions.create(agentId);
+        sessionId = session.id;
+        sessions.setRunning(sessionId);
+
+        const page = await sessions.newPage(sessionId);
+        const agent = new WebAgent(
+          {
+            agentId,
+            sessionId,
+            metadata: metadata ?? {},
+            registration: gatewayResult.agent,
+          },
+          {
+            startUrl,
+            steps: steps as Array<{ tool: string; input: Record<string, unknown> }>,
+          },
+        );
+
+        await agent.run(page);
+        sessions.setCompleted(sessionId);
+        jobStore.complete(job.jobId, agent.results);
+      } catch (err) {
+        if (sessionId) {
+          sessions.setError(sessionId, (err as Error).message);
+        }
+        jobStore.fail(job.jobId, (err as Error).message);
+      } finally {
+        if (sessionId) {
+          await sessions.close(sessionId);
+        }
+      }
+    })();
+  });
+
+  // ------------------------------------------------------------------ GET /agents/jobs/:jobId
+  // Poll for the status and results of an async job.
+  // ------------------------------------------------------------------
+  router.get('/jobs/:jobId', (req: Request, res: Response) => {
+    const job = jobStore.get(req.params.jobId);
+    if (!job) {
+      res.status(404).json({ error: `Job "${req.params.jobId}" not found.` });
+      return;
+    }
+    res.json(job);
+  });
+
+  // ------------------------------------------------------------------ GET /agents/jobs
+  // List all submitted jobs.
+  // ------------------------------------------------------------------
+  router.get('/jobs', (_req: Request, res: Response) => {
+    res.json({ jobs: jobStore.list() });
+  });
+
   // ------------------------------------------------------------------ GET /agents/sessions
   // List active sessions.
   // ------------------------------------------------------------------
@@ -98,4 +190,5 @@ export function agentRouter(sessions: SessionManager, gateway: AgentGateway): Ro
 
   return router;
 }
+
 
