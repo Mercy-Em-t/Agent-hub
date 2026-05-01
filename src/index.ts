@@ -1,12 +1,23 @@
 /**
  * Agent-hub – main entry point.
  *
- * Starts the REST API server, which exposes endpoints that allow
- * AI agents (or human operators) to:
+ * Starts the REST API server, which exposes:
  *
- *  POST /agents/run       – run a sequence of browser-automation steps
- *  GET  /agents/sessions  – list active sessions
- *  GET  /health           – service health-check
+ *  POST /registry/agents              – register a new AI agent (declaration)
+ *  GET  /registry/agents              – list all agent registrations
+ *  GET  /registry/agents/:id          – get a specific agent registration
+ *  PATCH /registry/agents/:id/approve – approve an agent
+ *  PATCH /registry/agents/:id/revoke  – revoke an agent
+ *
+ *  POST /registry/sites               – register a website for agent access
+ *  GET  /registry/sites               – list all site registrations
+ *  GET  /registry/sites/:id           – get a specific site registration
+ *  PATCH /registry/sites/:id/approve  – approve a site
+ *  PATCH /registry/sites/:id/revoke   – revoke a site
+ *
+ *  POST /agents/run                   – run a task (requires agentId + apiKey)
+ *  GET  /agents/sessions              – list active sessions
+ *  GET  /health                       – service health-check
  *
  * Usage:
  *   npm run dev           (ts-node, development)
@@ -15,6 +26,8 @@
 
 import { BrowserManager } from './browser/BrowserManager';
 import { SessionManager } from './sessions/SessionManager';
+import { AgentRegistry } from './registry/AgentRegistry';
+import { SiteRegistry } from './registry/SiteRegistry';
 import { createApp } from './api/server';
 import { defaultConfig } from './config';
 
@@ -23,6 +36,8 @@ export * from './agents';
 export * from './browser';
 export * from './tools';
 export * from './sessions';
+export * from './registry';
+export * from './gateway';
 export { createApp } from './api/server';
 
 async function main() {
@@ -30,15 +45,26 @@ async function main() {
   await browserManager.launch();
 
   const sessionManager = new SessionManager(browserManager);
-  const app = createApp(sessionManager);
+  const agentRegistry = new AgentRegistry();
+  const siteRegistry = new SiteRegistry();
+  const app = createApp(sessionManager, agentRegistry, siteRegistry);
 
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : defaultConfig.apiPort;
 
   const server = app.listen(port, () => {
     console.log(`Agent-hub API listening on http://localhost:${port}`);
-    console.log('  POST /agents/run       – run a task');
-    console.log('  GET  /agents/sessions  – list sessions');
-    console.log('  GET  /health           – health check');
+    console.log('');
+    console.log('  Registry (declare before operating):');
+    console.log('    POST   /registry/agents              – register an agent');
+    console.log('    PATCH  /registry/agents/:id/approve  – approve an agent');
+    console.log('    POST   /registry/sites               – register a site');
+    console.log('    PATCH  /registry/sites/:id/approve   – approve a site');
+    console.log('');
+    console.log('  Operations (gateway-protected):');
+    console.log('    POST   /agents/run                   – run a task');
+    console.log('    GET    /agents/sessions               – list sessions');
+    console.log('');
+    console.log('    GET    /health                        – health check');
   });
 
   // Graceful shutdown

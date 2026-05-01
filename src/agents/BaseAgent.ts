@@ -1,5 +1,6 @@
 import { PageController } from '../browser/PageController';
 import { AgentTool, ToolResult } from '../tools/types';
+import type { AgentRegistration } from '../registry/AgentRegistry';
 
 export interface AgentCapabilities {
   /** List of tool names this agent is allowed to use */
@@ -13,6 +14,12 @@ export interface AgentContext {
   sessionId: string;
   /** Metadata the agent can carry across steps */
   metadata: Record<string, unknown>;
+  /**
+   * Full registration record for this agent.
+   * Agents can always inspect their own identity, purpose, owner,
+   * and operational boundaries via this field.
+   */
+  registration?: AgentRegistration;
 }
 
 /**
