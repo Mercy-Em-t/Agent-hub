@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { AgentRegistry } from '../../registry/AgentRegistry';
 import { SiteRegistry } from '../../registry/SiteRegistry';
+import type { IWhatsAppNotifier } from '../../notifications/WhatsAppNotifier';
 
 // ── Zod schemas ──────────────────────────────────────────────────────────────
 
@@ -11,10 +12,31 @@ const AgentRegisterSchema = z.object({
   owner: z.string().min(1),
   contactEmail: z.string().email(),
   purpose: z.string().min(1),
+  /** High-level outcomes the agent is trying to achieve */
+  goals: z.array(z.string()).default([]),
+  /** Ordered SOP steps describing how the agent works */
+  workingProcedure: z.array(z.string()).default([]),
+  /** Explicit responsibility scope */
+  responsibilityBounds: z
+    .object({
+      responsible: z.array(z.string()).default([]),
+      notResponsible: z.array(z.string()).default([]),
+    })
+    .optional(),
+  /** Primary home website URL */
+  website: z.string().url('Must be a valid URL').optional(),
   allowedDomains: z.array(z.string()).default([]),
   deniedDomains: z.array(z.string()).default([]),
   allowedTools: z.array(z.string()).default([]),
   constraints: z.array(z.string()).default([]),
+  /**
+   * Owner's WhatsApp number in E.164 format (e.g. "+1234567890").
+   * When provided, lifecycle notifications are sent to this number.
+   */
+  ownerPhone: z
+    .string()
+    .regex(/^\+[1-9]\d{7,14}$/, 'Must be a valid E.164 phone number (e.g. "+1234567890")')
+    .optional(),
 });
 
 const SiteRegisterSchema = z.object({
@@ -31,11 +53,25 @@ const SiteRegisterSchema = z.object({
   allowedCapabilities: z.array(z.string()).default([]),
 });
 
+// ── Notification helpers ─────────────────────────────────────────────────────
+
+function notifyOwner(
+  notifier: IWhatsAppNotifier | undefined,
+  phone: string | undefined,
+  message: string,
+): void {
+  if (!notifier || !phone) return;
+  notifier.send(phone, message).catch(() => {
+    // Fire-and-forget: notification failures must not fail the API request
+  });
+}
+
 // ── Router factory ───────────────────────────────────────────────────────────
 
 export function registryRouter(
   agentRegistry: AgentRegistry,
   siteRegistry: SiteRegistry,
+  notifier?: IWhatsAppNotifier,
 ): Router {
   const router = Router();
 
@@ -46,6 +82,13 @@ export function registryRouter(
    * Register a new AI agent.  Returns the full registration including
    * the generated agentId and apiKey (store the apiKey — it is only shown once).
    * Status starts as "pending"; an operator must call PATCH …/approve to allow operation.
+   *
+   * New onboarding fields (all optional):
+   *   goals             – what the agent is trying to achieve
+   *   workingProcedure  – ordered steps of its operating procedure
+   *   responsibilityBounds – what it IS and IS NOT responsible for
+   *   website           – primary home URL
+   *   ownerPhone        – E.164 WhatsApp number for lifecycle notifications
    */
   router.post('/agents', (req: Request, res: Response) => {
     const parsed = AgentRegisterSchema.safeParse(req.body);
@@ -55,6 +98,14 @@ export function registryRouter(
     }
     try {
       const registration = agentRegistry.register(parsed.data);
+      notifyOwner(
+        notifier,
+        registration.ownerPhone,
+        `Agent-hub 🤖\nYour agent "${registration.name}" has been registered.\n` +
+          `Status: PENDING – awaiting approval before it can operate.\n` +
+          `Agent ID: ${registration.agentId.slice(0, 8)}…\n\n` +
+          `Reply "approve ${registration.name}" to activate it, or "help" for all commands.`,
+      );
       res.status(201).json(registration);
     } catch (err) {
       res.status(409).json({ error: (err as Error).message });
@@ -89,6 +140,11 @@ export function registryRouter(
   router.patch('/agents/:agentId/approve', (req: Request, res: Response) => {
     try {
       const agent = agentRegistry.approve(req.params.agentId);
+      notifyOwner(
+        notifier,
+        agent.ownerPhone,
+        `Agent-hub ✅\nYour agent "${agent.name}" has been APPROVED and can now operate.`,
+      );
       res.json(agent);
     } catch (err) {
       res.status(400).json({ error: (err as Error).message });
@@ -102,6 +158,11 @@ export function registryRouter(
   router.patch('/agents/:agentId/revoke', (req: Request, res: Response) => {
     try {
       const agent = agentRegistry.revoke(req.params.agentId);
+      notifyOwner(
+        notifier,
+        agent.ownerPhone,
+        `Agent-hub 🚫\nYour agent "${agent.name}" has been REVOKED and can no longer operate.`,
+      );
       res.json(agent);
     } catch (err) {
       res.status(400).json({ error: (err as Error).message });

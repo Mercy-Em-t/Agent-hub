@@ -13,11 +13,13 @@ Agent-hub provides:
 | **Registry** | Agents and websites must **declare themselves** before gaining access. No anonymous operations. |
 | **Gateway** | Every task request passes through a multi-rule entry-gate before a browser session is opened. |
 | **Browser** | Launches and manages Playwright browser instances with isolated contexts per agent |
-| **PageController** | High-level wrapper exposing navigate, click, fill, select, screenshot, read, evaluate |
-| **Tools** | Composable, schema-validated actions agents can invoke: `navigate`, `click`, `fillForm`, `readContent`, `screenshot`, `waitForSelector`, `selectOption` |
+| **PageController** | High-level wrapper exposing navigate, click, fill, hover, scroll, select, screenshot, read, evaluate |
+| **Tools** | Composable, schema-validated actions agents can invoke (10 built-in) |
 | **Agents** | `BaseAgent` abstract class + `WebAgent` concrete implementation that sequences tool calls |
 | **Sessions** | `SessionManager` for concurrent, isolated browser sessions with lifecycle tracking |
-| **REST API** | Express server — registry, gateway-protected task execution, session management |
+| **Jobs** | `JobStore` for async task tracking (queued → running → completed/failed) |
+| **WhatsApp** | Owner notification + command interface via Twilio WhatsApp API |
+| **REST API** | Express server — registry, gateway-protected task execution, async jobs, WhatsApp webhook |
 
 ---
 
@@ -33,9 +35,14 @@ Every agent must declare:
 |---|---|
 | `name` / `owner` / `contactEmail` | Who is this agent and who is accountable? |
 | `purpose` / `description` | Why does this agent exist and what does it do? |
+| `goals` | What outcomes should this agent produce? |
+| `workingProcedure` | How does it carry out its work (ordered SOP steps)? |
+| `responsibilityBounds` | What is it explicitly responsible for — and NOT responsible for? |
+| `website` | What is its primary home URL? |
 | `allowedDomains` / `deniedDomains` | Where may it go (and where must it never go)? |
 | `allowedTools` | What actions may it perform? |
 | `constraints` | Explicit ethical / operational rules |
+| `ownerPhone` | E.164 WhatsApp number for lifecycle notifications (optional) |
 
 Registration status starts as **`pending`** — an operator must explicitly **approve** the agent before it can run. Agents can be **revoked** at any time, immediately blocking all future operations.
 
@@ -104,7 +111,7 @@ Set the `PORT` environment variable to override.
 
 ### Registry — Agent endpoints
 
-#### `POST /registry/agents` — declare a new AI agent
+#### `POST /registry/agents` — onboard a new AI agent
 
 ```json
 {
@@ -113,14 +120,33 @@ Set the `PORT` environment variable to override.
   "owner": "Acme AI Team",
   "contactEmail": "ai-ops@acme.com",
   "purpose": "Automate job-search research on behalf of Acme recruiters",
+  "goals": [
+    "Find and return the top 10 job listings matching a query",
+    "Extract job title, company, location, and salary band"
+  ],
+  "workingProcedure": [
+    "Navigate to the target job board",
+    "Enter the search query in the search field",
+    "Scroll through the results page",
+    "Read each listing's title, company, and metadata",
+    "Return structured results"
+  ],
+  "responsibilityBounds": {
+    "responsible": ["Reading public job listing pages", "Extracting structured data"],
+    "notResponsible": ["Submitting applications", "Making purchases", "Account login"]
+  },
+  "website": "https://mybot.acme.com",
   "allowedDomains": ["linkedin.com", "indeed.com"],
   "deniedDomains": [],
-  "allowedTools": ["navigate", "readContent", "screenshot"],
-  "constraints": ["Never submit forms", "Never click purchase buttons"]
+  "allowedTools": ["navigate", "readContent", "screenshot", "scroll"],
+  "constraints": ["Never submit forms", "Never click purchase buttons"],
+  "ownerPhone": "+1234567890"
 }
 ```
 
 Returns a `201` with the full registration including `agentId` and `apiKey` (store these — `apiKey` is your agent's credential). Status is `pending`.
+
+If `ownerPhone` is provided, a WhatsApp confirmation message is sent immediately.
 
 #### `PATCH /registry/agents/:agentId/approve` — approve a pending agent
 #### `PATCH /registry/agents/:agentId/revoke` — revoke an agent immediately
@@ -272,6 +298,87 @@ List all submitted jobs (all statuses).
 
 ---
 
+## WhatsApp Integration
+
+Agent-hub can notify agent owners and accept management commands via WhatsApp, using the **Twilio WhatsApp API**.
+
+### Setup
+
+1. [Sign up for Twilio](https://www.twilio.com/try-twilio) and enable the WhatsApp sandbox (or a production WhatsApp sender).
+2. Set the following environment variables:
+
+```bash
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_WHATSAPP_FROM=+14155238886   # Your Twilio WhatsApp number
+```
+
+3. In your Twilio console, point the **"A message comes in"** webhook to:
+
+```
+POST https://your-server.example.com/whatsapp/webhook
+```
+
+4. When registering an agent, include `ownerPhone` in E.164 format (e.g. `"+1234567890"`).
+
+### Lifecycle Notifications
+
+The owner's WhatsApp number receives a message automatically when:
+
+| Event | Message content |
+|---|---|
+| Agent registered | Confirmation + pending status + instructions |
+| Agent approved | Approval notice |
+| Agent revoked | Revocation notice |
+
+### WhatsApp Commands
+
+Send any of the following commands to the Twilio WhatsApp number:
+
+| Command | What it does |
+|---|---|
+| `help` | Show all available commands |
+| `list` | List your registered agents (matched by your phone number) |
+| `status <name\|id>` | Get the current status of an agent |
+| `approve <name\|id>` | Approve a pending agent (owner only) |
+| `revoke <name\|id>` | Revoke an agent (owner only) |
+| `info <name\|id>` | Show full onboarding details (goals, procedure, bounds, website) |
+
+`<name|id>` accepts the agent's **display name** (case-insensitive) or the first few characters of its **UUID**.
+
+**Example conversation:**
+
+```
+You:     list
+Bot:     Your agents:
+         • MySearchBot [pending]  id: a3f9b2c1
+
+You:     info MySearchBot
+Bot:     Name:    MySearchBot
+         Status:  PENDING
+         Owner:   Acme AI Team
+         Purpose: Automate job-search research...
+         Website: https://mybot.acme.com
+         Goals:
+           1. Find and return the top 10 job listings...
+         Procedure:
+           1. Navigate to the target job board
+           2. Enter the search query...
+         Responsible for: Reading public job listing pages
+         NOT responsible for: Submitting applications
+
+You:     approve MySearchBot
+Bot:     ✅ Agent "MySearchBot" has been approved and can now operate.
+```
+
+### Webhook Endpoint
+
+#### `POST /whatsapp/webhook`
+
+Twilio calls this endpoint when an inbound WhatsApp message arrives. Body is `application/x-www-form-urlencoded`.  Returns TwiML XML.
+
+---
+
 ## Available Tools
 
 | Tool | Description |
@@ -294,7 +401,8 @@ List all submitted jobs (all statuses).
 ```typescript
 import {
   AgentRegistry, SiteRegistry, AgentGateway,
-  BrowserManager, SessionManager, WebAgent
+  BrowserManager, SessionManager, WebAgent,
+  NullWhatsAppNotifier,
 } from 'agent-hub';
 
 // --- 1. Set up registry + gateway ---
@@ -309,10 +417,18 @@ const reg = agentRegistry.register({
   owner: 'Alice',
   contactEmail: 'alice@example.com',
   purpose: 'Automate job research',
+  goals: ['Return top 10 matching listings'],
+  workingProcedure: ['Navigate to board', 'Search', 'Read results'],
+  responsibilityBounds: {
+    responsible: ['Reading public pages'],
+    notResponsible: ['Account login', 'Form submissions'],
+  },
+  website: 'https://mybot.example.com',
   allowedDomains: ['example.com'],
   deniedDomains: [],
   allowedTools: ['navigate', 'readContent'],
   constraints: ['Never submit forms'],
+  ownerPhone: '+1234567890',
 });
 agentRegistry.approve(reg.agentId);
 
@@ -373,17 +489,18 @@ src/
 ├── tools/          Ten built-in tools, each with Zod input validation
 ├── sessions/       SessionManager — concurrent isolated browser contexts
 ├── jobs/           JobStore — async task tracking (queued/running/completed/failed)
-├── api/            Express REST API (server + routes: registry, agents)
+├── notifications/  IWhatsAppNotifier interface + TwilioWhatsAppNotifier + NullWhatsAppNotifier
+├── api/            Express REST API (server + routes: registry, agents, whatsapp)
 ├── config/         Default configuration
 └── index.ts        Entry-point (server) + library re-exports
 
 tests/
 ├── registry/       AgentRegistry + SiteRegistry unit tests
-├── gateway/        AgentGateway unit tests (all 11 governance rules)
+├── gateway/        AgentGateway unit tests (all governance rules)
 ├── agents/         Agent unit tests
 ├── tools/          Tool unit tests (mock PageController)
 ├── sessions/       SessionManager unit tests
 ├── jobs/           JobStore unit tests
-└── api/            API integration tests (supertest, includes gateway + async job flow)
+├── notifications/  WhatsApp notifier unit tests (mocked https)
+└── api/            API integration tests (supertest — gateway, async jobs, WhatsApp webhook)
 ```
-

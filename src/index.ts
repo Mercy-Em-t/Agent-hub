@@ -42,6 +42,7 @@ export * from './sessions';
 export * from './registry';
 export * from './gateway';
 export * from './jobs';
+export * from './notifications';
 export { createApp } from './api/server';
 
 async function main() {
@@ -70,6 +71,9 @@ async function main() {
     console.log('    GET    /agents/jobs/:jobId            – poll async job status');
     console.log('    GET    /agents/jobs                   – list all submitted jobs');
     console.log('    GET    /agents/sessions               – list sessions');
+    console.log('');
+    console.log('  WhatsApp (Twilio webhook):');
+    console.log('    POST   /whatsapp/webhook              – inbound owner commands');
     console.log('');
     console.log('    GET    /health                        – health check');
   });
