@@ -1,6 +1,42 @@
 # Agent-hub
 
-> A platform for onboarding AI agents to work **alongside humans** in the tech space — enabling agents to navigate websites, interact with UI elements, fill forms, and complete web-based workflows, just as a human operator would.
+> An **agent-first** platform for onboarding and governing AI agents that operate on the web.  
+> Agents are **first-class citizens** — every interface (REST API, CLI, MCP server) is machine-readable and programmatically consumable without human involvement.
+
+---
+
+## Agent-first Design
+
+Agent-hub ships three interfaces so AI agents can interact with it in whatever way their runtime supports:
+
+| Interface | How to use |
+|---|---|
+| **REST API** | Standard JSON HTTP — see `GET /openapi.json` for the full OpenAPI 3.1 spec |
+| **CLI** | `agent-hub <command>` — JSON output by default, pipeable |
+| **MCP server** | `npm run mcp` — Model Context Protocol over stdio; works with Claude, Cursor, etc. |
+
+### Zero-human bootstrap
+
+An AI agent can fully self-orient by calling a single endpoint:
+
+```
+GET /capabilities
+```
+
+This returns a single JSON document with:
+- What Agent-hub is and does
+- All available interfaces and how to invoke them
+- Auth requirements and how to obtain credentials
+- A 5-step quickstart the agent can execute sequentially
+- Links to the full OpenAPI spec (`/openapi.json`) and tool catalog (`/tools`)
+
+### Machine-readable discovery
+
+| Endpoint | Returns |
+|---|---|
+| `GET /capabilities` | Bootstrap manifest — agent self-orientation document |
+| `GET /openapi.json` | Full OpenAPI 3.1 specification |
+| `GET /tools` | Live tool catalog with JSON Schema input definitions |
 
 ---
 
@@ -20,6 +56,8 @@ Agent-hub provides:
 | **Jobs** | `JobStore` for async task tracking (queued → running → completed/failed) |
 | **WhatsApp** | Owner notification + command interface via Twilio WhatsApp API |
 | **REST API** | Express server — registry, gateway-protected task execution, async jobs, WhatsApp webhook |
+| **CLI** | `agent-hub <command>` — JSON-first CLI for scripting, automation pipelines, and AI agents |
+| **MCP Server** | Model Context Protocol server — use Agent-hub as a tool from any MCP-compatible AI client |
 
 ---
 
@@ -478,6 +516,113 @@ npm run build       # Compile to dist/
 
 ---
 
+## CLI
+
+`agent-hub` is a JSON-first CLI — all output is machine-readable JSON by default.  
+Add `--pretty` for human-readable indented output.
+
+```bash
+# Install globally after building
+npm run build
+npm link   # or: npm install -g .
+
+# Or run directly with ts-node (no build needed)
+npx ts-node src/cli/index.ts <command>
+```
+
+### Examples
+
+```bash
+# Self-orient — what is this hub?
+agent-hub capabilities --pretty
+
+# Discover available tools (no hub knowledge needed)
+agent-hub tools --pretty
+
+# Register an agent
+agent-hub agents register \
+  --name "SearchBot" \
+  --owner "Acme" \
+  --email "ops@acme.com" \
+  --purpose "Search job listings" \
+  --allowed-domains "example.com,indeed.com"
+
+# Approve it (use agentId from the register response)
+agent-hub agents approve <agentId>
+
+# Register + approve a site
+agent-hub sites register --domain example.com --owner Acme --email ops@acme.com --description "Job board"
+agent-hub sites approve <siteId>
+
+# Run a task
+agent-hub run \
+  --agent-id <agentId> \
+  --api-key <apiKey> \
+  --url https://example.com \
+  --steps '[{"tool":"navigate","input":{"url":"https://example.com"}},{"tool":"readContent","input":{}}]'
+
+# Poll a job
+agent-hub jobs get <jobId> --pretty
+```
+
+### Global flags
+
+| Flag | Default | Description |
+|---|---|---|
+| `--hub-url <url>` | `$AGENT_HUB_URL` or `http://localhost:3000` | Hub base URL |
+| `--pretty` | off | Pretty-print JSON output |
+
+---
+
+## MCP Server
+
+The Model Context Protocol (MCP) server lets any MCP-compatible AI client (Claude, Cursor, Zed, etc.) use Agent-hub as a set of native tools — **no REST or JSON knowledge needed**.
+
+```bash
+# Start the MCP server (connects to the running hub)
+npm run mcp
+# or:
+AGENT_HUB_URL=http://localhost:3000 npx ts-node src/mcp/index.ts
+```
+
+Transport: **stdio JSON-RPC 2.0** | Protocol: **MCP 2024-11-05**
+
+### MCP tools
+
+| Tool | What it does |
+|---|---|
+| `hub_health` | Check hub health |
+| `hub_capabilities` | Bootstrap manifest — agent self-orientation |
+| `hub_list_tools` | List browser tools with JSON Schemas |
+| `hub_register_agent` | Register an agent (returns agentId + apiKey) |
+| `hub_approve_agent` | Approve an agent |
+| `hub_revoke_agent` | Revoke an agent |
+| `hub_list_agents` | List all agents |
+| `hub_get_agent` | Get agent details |
+| `hub_register_site` | Register a site |
+| `hub_approve_site` | Approve a site |
+| `hub_list_sites` | List all sites |
+| `hub_run_task` | Run a browser task synchronously |
+| `hub_submit_task` | Submit async task (returns jobId) |
+| `hub_poll_job` | Poll async job status |
+| `hub_list_jobs` | List all jobs |
+
+### MCP client configuration (Claude Desktop example)
+
+```json
+{
+  "mcpServers": {
+    "agent-hub": {
+      "command": "npx",
+      "args": ["ts-node", "/path/to/Agent-hub/src/mcp/index.ts"],
+      "env": { "AGENT_HUB_URL": "http://localhost:3000" }
+    }
+  }
+}
+```
+
+---
+
 ## Project Structure
 
 ```
@@ -490,7 +635,16 @@ src/
 ├── sessions/       SessionManager — concurrent isolated browser contexts
 ├── jobs/           JobStore — async task tracking (queued/running/completed/failed)
 ├── notifications/  IWhatsAppNotifier interface + TwilioWhatsAppNotifier + NullWhatsAppNotifier
-├── api/            Express REST API (server + routes: registry, agents, whatsapp)
+├── cli/            JSON-first CLI (agent-hub <command>)
+├── mcp/            MCP stdio server (agent-hub as native AI client tools)
+├── api/            Express REST API (server + routes: registry, agents, whatsapp, capabilities)
+│   ├── openapi.ts              OpenAPI 3.1 spec
+│   ├── zodToJsonSchema.ts      Zod→JSON Schema converter (no external deps)
+│   └── routes/
+│       ├── agents.ts           POST /agents/run, /run/async, GET /agents/jobs, /sessions
+│       ├── registry.ts         POST/GET/PATCH /registry/agents and /registry/sites
+│       ├── whatsapp.ts         POST /whatsapp/webhook (Twilio TwiML)
+│       └── capabilities.ts     GET /capabilities, /tools, /openapi.json
 ├── config/         Default configuration
 └── index.ts        Entry-point (server) + library re-exports
 
@@ -502,5 +656,7 @@ tests/
 ├── sessions/       SessionManager unit tests
 ├── jobs/           JobStore unit tests
 ├── notifications/  WhatsApp notifier unit tests (mocked https)
-└── api/            API integration tests (supertest — gateway, async jobs, WhatsApp webhook)
+├── cli/            CLI unit tests (parseArgs, mock HTTP server)
+├── mcp/            MCP server unit tests (handleRequest, callTool dispatcher)
+└── api/            API integration tests (supertest — gateway, async jobs, WhatsApp, capabilities)
 ```

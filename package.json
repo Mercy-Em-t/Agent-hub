@@ -8,10 +8,14 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
+    "mcp": "ts-node src/mcp/index.ts",
     "test": "jest --runInBand",
     "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",
     "lint:fix": "eslint 'src/**/*.ts' 'tests/**/*.ts' --fix",
     "typecheck": "tsc --noEmit"
+  },
+  "bin": {
+    "agent-hub": "dist/cli/index.js"
   },
   "keywords": [
     "ai-agents",

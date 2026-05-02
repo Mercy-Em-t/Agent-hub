@@ -8,6 +8,7 @@ import { IWhatsAppNotifier, TwilioWhatsAppNotifier, NullWhatsAppNotifier } from 
 import { agentRouter } from './routes/agents';
 import { registryRouter } from './routes/registry';
 import { whatsappRouter } from './routes/whatsapp';
+import { capabilitiesRouter } from './routes/capabilities';
 
 export function createApp(
   sessions: SessionManager,
@@ -30,6 +31,9 @@ export function createApp(
   app.get('/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', version: '0.1.0' });
   });
+
+  // Discovery endpoints — agent-first, no auth needed
+  app.use('/', capabilitiesRouter());
 
   // Registry routes (agent + site registration, with WhatsApp notifications)
   app.use('/registry', registryRouter(agentRegistry, siteRegistry, whatsapp));

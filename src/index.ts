@@ -59,6 +59,11 @@ async function main() {
   const server = app.listen(port, () => {
     console.log(`Agent-hub API listening on http://localhost:${port}`);
     console.log('');
+    console.log('  Discovery (agent-first — no auth needed):');
+    console.log('    GET    /capabilities              – bootstrap manifest for AI agents');
+    console.log('    GET    /openapi.json              – OpenAPI 3.1 specification');
+    console.log('    GET    /tools                     – live tool catalog with JSON Schemas');
+    console.log('');
     console.log('  Registry (declare before operating):');
     console.log('    POST   /registry/agents              – register an agent');
     console.log('    PATCH  /registry/agents/:id/approve  – approve an agent');
@@ -76,6 +81,9 @@ async function main() {
     console.log('    POST   /whatsapp/webhook              – inbound owner commands');
     console.log('');
     console.log('    GET    /health                        – health check');
+    console.log('');
+    console.log('  CLI:  npx ts-node src/cli/index.ts help');
+    console.log('  MCP:  npm run mcp');
   });
 
   // Graceful shutdown
