@@ -20,6 +20,14 @@ function twimlReply(message: string): string {
   );
 }
 
+/**
+ * Format an array of strings as an indented numbered list.
+ * e.g. ["a", "b"] → "  1. a\n  2. b"
+ */
+function numberedList(items: string[]): string {
+  return items.map((item, i) => `  ${i + 1}. ${item}`).join('\n');
+}
+
 // ── Router factory ────────────────────────────────────────────────────────────
 
 export function whatsappRouter(agentRegistry: AgentRegistry): Router {
@@ -177,12 +185,10 @@ export function whatsappRouter(agentRegistry: AgentRegistry): Router {
           infoLines.push(`Website: ${agent.website}`);
         }
         if (agent.goals && agent.goals.length > 0) {
-          infoLines.push(`Goals:\n  ${agent.goals.map((g, i) => `${i + 1}. ${g}`).join('\n  ')}`);
+          infoLines.push(`Goals:\n${numberedList(agent.goals)}`);
         }
         if (agent.workingProcedure && agent.workingProcedure.length > 0) {
-          infoLines.push(
-            `Procedure:\n  ${agent.workingProcedure.map((s, i) => `${i + 1}. ${s}`).join('\n  ')}`,
-          );
+          infoLines.push(`Procedure:\n${numberedList(agent.workingProcedure)}`);
         }
         if (agent.responsibilityBounds) {
           const { responsible, notResponsible } = agent.responsibilityBounds;

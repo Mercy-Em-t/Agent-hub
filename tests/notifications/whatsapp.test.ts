@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import * as httpsModule from 'https';
 import {
   NullWhatsAppNotifier,
   TwilioWhatsAppNotifier,
@@ -6,8 +7,7 @@ import {
 
 // Mock the entire 'https' module so we can control request behaviour
 jest.mock('https');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const https = require('https') as { request: jest.Mock };
+const https = httpsModule as unknown as { request: jest.Mock };
 
 // ── NullWhatsAppNotifier ─────────────────────────────────────────────────────
 

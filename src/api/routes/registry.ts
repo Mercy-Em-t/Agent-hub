@@ -61,8 +61,10 @@ function notifyOwner(
   message: string,
 ): void {
   if (!notifier || !phone) return;
-  notifier.send(phone, message).catch(() => {
-    // Fire-and-forget: notification failures must not fail the API request
+  notifier.send(phone, message).catch((err: unknown) => {
+    // Fire-and-forget: notification failures must not fail the API request,
+    // but log them so delivery issues are diagnosable in production.
+    console.error('[WhatsApp] notification delivery failed:', (err as Error).message ?? err);
   });
 }
 
