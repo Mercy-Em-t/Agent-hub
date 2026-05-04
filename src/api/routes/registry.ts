@@ -4,6 +4,23 @@ import { AgentRegistry } from '../../registry/AgentRegistry';
 import { SiteRegistry } from '../../registry/SiteRegistry';
 import type { IWhatsAppNotifier } from '../../notifications/WhatsAppNotifier';
 
+// ── Pagination helper ─────────────────────────────────────────────────────────
+
+function parsePagination(query: Record<string, unknown>): { limit: number; offset: number } {
+  const limit  = Math.max(1, Math.min(1000, parseInt(String(query.limit  ?? '100'), 10) || 100));
+  const offset = Math.max(0, parseInt(String(query.offset ?? '0'),   10) || 0);
+  return { limit, offset };
+}
+
+function paginate<T>(items: T[], limit: number, offset: number) {
+  return {
+    total: items.length,
+    limit,
+    offset,
+    items: items.slice(offset, offset + limit),
+  };
+}
+
 // ── Zod schemas ──────────────────────────────────────────────────────────────
 
 const AgentRegisterSchema = z.object({
@@ -37,6 +54,24 @@ const AgentRegisterSchema = z.object({
     .string()
     .regex(/^\+[1-9]\d{7,14}$/, 'Must be a valid E.164 phone number (e.g. "+1234567890")')
     .optional(),
+});
+
+const AgentUpdateSchema = z.object({
+  description: z.string().min(1).optional(),
+  purpose: z.string().min(1).optional(),
+  goals: z.array(z.string()).optional(),
+  workingProcedure: z.array(z.string()).optional(),
+  responsibilityBounds: z
+    .object({
+      responsible: z.array(z.string()).default([]),
+      notResponsible: z.array(z.string()).default([]),
+    })
+    .optional(),
+  website: z.string().url('Must be a valid URL').optional(),
+  allowedDomains: z.array(z.string()).optional(),
+  deniedDomains: z.array(z.string()).optional(),
+  allowedTools: z.array(z.string()).optional(),
+  constraints: z.array(z.string()).optional(),
 });
 
 const SiteRegisterSchema = z.object({
@@ -120,10 +155,14 @@ export function registryRouter(
 
   /**
    * GET /registry/agents
-   * List all registered agents (all statuses).
+   * List all registered agents (all statuses), with optional pagination.
+   * Query params: limit (default 100), offset (default 0)
    */
-  router.get('/agents', (_req: Request, res: Response) => {
-    res.json({ agents: agentRegistry.list() });
+  router.get('/agents', (req: Request, res: Response) => {
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
+    const all = agentRegistry.list();
+    const page = paginate(all, limit, offset);
+    res.json({ agents: page.items, total: page.total, limit: page.limit, offset: page.offset });
   });
 
   /**
@@ -137,6 +176,27 @@ export function registryRouter(
       return;
     }
     res.json(agent);
+  });
+
+  /**
+   * PATCH /registry/agents/:agentId
+   * Partially update a registered agent's mutable fields.
+   * Identity fields (agentId, apiKey, owner, contactEmail) and status/timestamps
+   * cannot be changed here; use approve/revoke for lifecycle transitions.
+   * Requires operator authentication when OPERATOR_API_KEY is set.
+   */
+  router.patch('/agents/:agentId', auth, (req: Request, res: Response) => {
+    const parsed = AgentUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+    try {
+      const agent = agentRegistry.update(req.params.agentId, parsed.data);
+      res.json(agent);
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
+    }
   });
 
   /**
@@ -201,10 +261,14 @@ export function registryRouter(
 
   /**
    * GET /registry/sites
-   * List all registered sites.
+   * List all registered sites, with optional pagination.
+   * Query params: limit (default 100), offset (default 0)
    */
-  router.get('/sites', (_req: Request, res: Response) => {
-    res.json({ sites: siteRegistry.list() });
+  router.get('/sites', (req: Request, res: Response) => {
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
+    const all = siteRegistry.list();
+    const page = paginate(all, limit, offset);
+    res.json({ sites: page.items, total: page.total, limit: page.limit, offset: page.offset });
   });
 
   /**

@@ -150,6 +150,43 @@ export class PageController {
   }
 
   /**
+   * Set files on an `<input type="file">` element.
+   * @param selector  CSS selector for the file input.
+   * @param filePaths Absolute path(s) to the file(s) to attach.
+   */
+  async uploadFile(selector: string, filePaths: string | string[]): Promise<void> {
+    const paths = Array.isArray(filePaths) ? filePaths : [filePaths];
+    await this.page.locator(selector).first().setInputFiles(paths);
+  }
+
+  /**
+   * Click an element to trigger a download and save the downloaded file.
+   *
+   * @param clickSelector  CSS selector for the element whose click triggers the download.
+   * @param savePath       Absolute path to save the downloaded file.  If omitted a temp
+   *                       path in the OS temp directory is used.
+   * @param timeoutMs      Maximum wait time for the download to complete (default: 30 000 ms).
+   */
+  async downloadFile(
+    clickSelector: string,
+    savePath?: string,
+    timeoutMs?: number,
+  ): Promise<{ savedPath: string; suggestedFilename: string }> {
+    const [download] = await Promise.all([
+      this.page.waitForEvent('download', { timeout: timeoutMs ?? 30_000 }),
+      this.page.locator(clickSelector).first().click(),
+    ]);
+
+    const suggestedFilename = download.suggestedFilename();
+    const resolvedPath =
+      savePath ??
+      require('os').tmpdir() + require('path').sep + suggestedFilename;
+
+    await download.saveAs(resolvedPath);
+    return { savedPath: resolvedPath, suggestedFilename };
+  }
+
+  /**
    * Evaluate arbitrary JavaScript in the page context.
    * Agents can use this as an escape-hatch for complex interactions.
    */

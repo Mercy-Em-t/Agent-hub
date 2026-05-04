@@ -18,6 +18,12 @@ export interface JobRecord {
   results?: Array<{ step: number; tool: string; result: Record<string, any> }>;
   /** Error message populated if the job fails. */
   error?: string;
+  /**
+   * Optional URL to POST results to when the job finishes.
+   * When set, the hub delivers a webhook with the final job record
+   * instead of requiring the caller to poll GET /agents/jobs/:jobId.
+   */
+  callbackUrl?: string;
 }
 
 /**
@@ -35,12 +41,13 @@ export class JobStore {
   }
 
   /** Create a new queued job record and return it. */
-  create(agentId: string): JobRecord {
+  create(agentId: string, callbackUrl?: string): JobRecord {
     const record: JobRecord = {
       jobId: uuidv4(),
       agentId,
       createdAt: new Date().toISOString(),
       status: 'queued',
+      callbackUrl,
     };
     this.jobs.set(record.jobId, record);
     return record;

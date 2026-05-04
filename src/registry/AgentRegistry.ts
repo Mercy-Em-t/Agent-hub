@@ -99,6 +99,22 @@ export interface AgentRegistration {
   ownerPhone?: string;
 }
 
+export type AgentRegistrationUpdate = Partial<
+  Pick<
+    AgentRegistration,
+    | 'description'
+    | 'purpose'
+    | 'goals'
+    | 'workingProcedure'
+    | 'responsibilityBounds'
+    | 'website'
+    | 'allowedDomains'
+    | 'deniedDomains'
+    | 'allowedTools'
+    | 'constraints'
+  >
+>;
+
 export type AgentRegistrationInput = Omit<
   AgentRegistration,
   'agentId' | 'status' | 'registeredAt' | 'approvedAt' | 'revokedAt' | 'apiKey'
@@ -199,5 +215,21 @@ export class AgentRegistry {
   /** List only approved agents. */
   listApproved(): AgentRegistration[] {
     return this.list().filter((a) => a.status === 'approved');
+  }
+
+  /**
+   * Partially update a registered agent's mutable fields.
+   * Identity fields (agentId, apiKey, owner, contactEmail, ownerPhone) and
+   * status/timestamp fields are intentionally excluded — use approve/revoke
+   * for lifecycle transitions.
+   */
+  update(agentId: string, patch: AgentRegistrationUpdate): AgentRegistration {
+    const agent = this.getOrThrow(agentId);
+    if (agent.status === 'revoked') {
+      throw new Error(`Agent "${agentId}" has been revoked and cannot be updated.`);
+    }
+    const updated: AgentRegistration = { ...agent, ...patch };
+    this.agents.set(agentId, updated);
+    return updated;
   }
 }

@@ -34,9 +34,12 @@ import { SiteRegistry } from './registry/SiteRegistry';
 import { createApp } from './api/server';
 import { defaultConfig } from './config';
 import { JsonFileStore, dateReviver } from './storage/JsonFileStore';
+import { SqliteStore, openDatabase } from './storage/SqliteStore';
+import { AuditLog } from './audit/AuditLog';
 import type { AgentRegistration } from './registry/AgentRegistry';
 import type { SiteRegistration } from './registry/SiteRegistry';
 import type { JobRecord } from './jobs/JobStore';
+import type { AuditEntry } from './audit/AuditLog';
 import { join } from 'path';
 
 // Re-export public API so agent-hub can be used as a library too.
@@ -48,6 +51,7 @@ export * from './registry';
 export * from './gateway';
 export * from './jobs';
 export * from './notifications';
+export * from './audit';
 export { createApp } from './api/server';
 
 async function main() {
@@ -57,34 +61,52 @@ async function main() {
   const sessionManager = new SessionManager(browserManager);
 
   // ── Persistent storage ────────────────────────────────────────────────────
-  // Set DATA_DIR to enable file-backed persistence across restarts.
-  // When DATA_DIR is not set, all registries fall back to in-memory stores
-  // (same behaviour as before this feature was added).
+  // Priority:
+  //   SQLITE_FILE set → use SQLite for all stores (recommended for production)
+  //   DATA_DIR set    → use JSON file stores per directory (simple single-node)
+  //   Neither         → in-memory (default; data lost on restart)
+  const sqliteFile = process.env.SQLITE_FILE;
   const dataDir = process.env.DATA_DIR;
-  if (dataDir) {
-    console.log(`[storage] Persistent storage enabled → ${dataDir}`);
+
+  if (sqliteFile) {
+    console.log(`[storage] SQLite persistence enabled → ${sqliteFile}`);
+  } else if (dataDir) {
+    console.log(`[storage] JSON-file persistence enabled → ${dataDir}`);
   }
 
-  const agentRegistry = dataDir
-    ? new AgentRegistry(
-        new JsonFileStore<AgentRegistration>(join(dataDir, 'agents.json'), dateReviver),
-      )
-    : new AgentRegistry();
+  let agentRegistry: AgentRegistry;
+  let siteRegistry: SiteRegistry;
+  let jobStore: InstanceType<typeof import('./jobs/JobStore').JobStore>;
+  let auditLog: AuditLog;
 
-  const siteRegistry = dataDir
-    ? new SiteRegistry(
-        new JsonFileStore<SiteRegistration>(join(dataDir, 'sites.json'), dateReviver),
-      )
-    : new SiteRegistry();
-
-  // JobStore uses string timestamps (not Date objects), no reviver needed.
-  const { JobStore } = await import('./jobs/JobStore');
-  const jobStore = dataDir
-    ? new JobStore(new JsonFileStore<JobRecord>(join(dataDir, 'jobs.json')))
-    : new JobStore();
+  if (sqliteFile) {
+    const db = openDatabase(sqliteFile);
+    agentRegistry = new AgentRegistry(new SqliteStore<AgentRegistration>(db, 'agents'));
+    siteRegistry  = new SiteRegistry(new SqliteStore<SiteRegistration>(db, 'sites'));
+    const { JobStore } = await import('./jobs/JobStore');
+    jobStore  = new JobStore(new SqliteStore<JobRecord>(db, 'jobs'));
+    auditLog  = new AuditLog(new SqliteStore<AuditEntry>(db, 'audit'));
+  } else if (dataDir) {
+    agentRegistry = new AgentRegistry(
+      new JsonFileStore<AgentRegistration>(join(dataDir, 'agents.json'), dateReviver),
+    );
+    siteRegistry = new SiteRegistry(
+      new JsonFileStore<SiteRegistration>(join(dataDir, 'sites.json'), dateReviver),
+    );
+    const { JobStore } = await import('./jobs/JobStore');
+    // JobStore uses string timestamps (not Date objects), no reviver needed.
+    jobStore  = new JobStore(new JsonFileStore<JobRecord>(join(dataDir, 'jobs.json')));
+    auditLog  = new AuditLog(new JsonFileStore<AuditEntry>(join(dataDir, 'audit.json')));
+  } else {
+    const { JobStore } = await import('./jobs/JobStore');
+    agentRegistry = new AgentRegistry();
+    siteRegistry  = new SiteRegistry();
+    jobStore  = new JobStore();
+    auditLog  = new AuditLog();
+  }
   // ─────────────────────────────────────────────────────────────────────────
 
-  const app = createApp(sessionManager, agentRegistry, siteRegistry, jobStore);
+  const app = createApp(sessionManager, agentRegistry, siteRegistry, jobStore, undefined, auditLog);
 
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : defaultConfig.apiPort;
 
@@ -106,8 +128,12 @@ async function main() {
     console.log('    POST   /agents/run                   – run a task (synchronous)');
     console.log('    POST   /agents/run/async             – submit a task (async, returns jobId)');
     console.log('    GET    /agents/jobs/:jobId            – poll async job status');
+    console.log('    GET    /agents/audit               – audit log for all task runs');
     console.log('    GET    /agents/jobs                   – list all submitted jobs');
     console.log('    GET    /agents/sessions               – list sessions');
+    console.log('');
+    console.log('  Operator Dashboard:');
+    console.log('    GET    /dashboard                     – web UI for approvals and monitoring');
     console.log('');
     console.log('  WhatsApp (Twilio webhook):');
     console.log('    POST   /whatsapp/webhook              – inbound owner commands');
