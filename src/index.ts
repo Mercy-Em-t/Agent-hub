@@ -33,6 +33,11 @@ import { AgentRegistry } from './registry/AgentRegistry';
 import { SiteRegistry } from './registry/SiteRegistry';
 import { createApp } from './api/server';
 import { defaultConfig } from './config';
+import { JsonFileStore, dateReviver } from './storage/JsonFileStore';
+import type { AgentRegistration } from './registry/AgentRegistry';
+import type { SiteRegistration } from './registry/SiteRegistry';
+import type { JobRecord } from './jobs/JobStore';
+import { join } from 'path';
 
 // Re-export public API so agent-hub can be used as a library too.
 export * from './agents';
@@ -50,9 +55,36 @@ async function main() {
   await browserManager.launch();
 
   const sessionManager = new SessionManager(browserManager);
-  const agentRegistry = new AgentRegistry();
-  const siteRegistry = new SiteRegistry();
-  const app = createApp(sessionManager, agentRegistry, siteRegistry);
+
+  // ── Persistent storage ────────────────────────────────────────────────────
+  // Set DATA_DIR to enable file-backed persistence across restarts.
+  // When DATA_DIR is not set, all registries fall back to in-memory stores
+  // (same behaviour as before this feature was added).
+  const dataDir = process.env.DATA_DIR;
+  if (dataDir) {
+    console.log(`[storage] Persistent storage enabled → ${dataDir}`);
+  }
+
+  const agentRegistry = dataDir
+    ? new AgentRegistry(
+        new JsonFileStore<AgentRegistration>(join(dataDir, 'agents.json'), dateReviver),
+      )
+    : new AgentRegistry();
+
+  const siteRegistry = dataDir
+    ? new SiteRegistry(
+        new JsonFileStore<SiteRegistration>(join(dataDir, 'sites.json'), dateReviver),
+      )
+    : new SiteRegistry();
+
+  // JobStore uses string timestamps (not Date objects), no reviver needed.
+  const { JobStore } = await import('./jobs/JobStore');
+  const jobStore = dataDir
+    ? new JobStore(new JsonFileStore<JobRecord>(join(dataDir, 'jobs.json')))
+    : new JobStore();
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const app = createApp(sessionManager, agentRegistry, siteRegistry, jobStore);
 
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : defaultConfig.apiPort;
 

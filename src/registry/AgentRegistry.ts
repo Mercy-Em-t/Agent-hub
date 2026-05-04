@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { Store, MemoryStore } from '../storage/Store';
 
 export type AgentStatus = 'pending' | 'approved' | 'revoked';
 
@@ -113,7 +114,11 @@ export type AgentRegistrationInput = Omit<
  *   revoke()   → status: "revoked"   (agent is immediately blocked)
  */
 export class AgentRegistry {
-  private readonly agents: Map<string, AgentRegistration> = new Map();
+  private readonly agents: Store<AgentRegistration>;
+
+  constructor(store?: Store<AgentRegistration>) {
+    this.agents = store ?? new MemoryStore<AgentRegistration>();
+  }
 
   /**
    * Register a new agent.  Returns the full registration including the
@@ -140,6 +145,7 @@ export class AgentRegistry {
     }
     agent.status = 'approved';
     agent.approvedAt = new Date();
+    this.agents.set(agentId, agent);
     return agent;
   }
 
@@ -148,6 +154,7 @@ export class AgentRegistry {
     const agent = this.getOrThrow(agentId);
     agent.status = 'revoked';
     agent.revokedAt = new Date();
+    this.agents.set(agentId, agent);
     return agent;
   }
 
@@ -170,7 +177,7 @@ export class AgentRegistry {
   findByNameOrId(query: string): AgentRegistration | undefined {
     const q = query.trim().toLowerCase();
     if (q.length === 0) return undefined;
-    return [...this.agents.values()].find(
+    return this.agents.values().find(
       (a) =>
         a.name.toLowerCase() === q ||
         a.agentId.toLowerCase().startsWith(q),
@@ -181,12 +188,12 @@ export class AgentRegistry {
    * Find all agents whose ownerPhone matches the given E.164 number.
    */
   findByOwnerPhone(phone: string): AgentRegistration[] {
-    return [...this.agents.values()].filter((a) => a.ownerPhone === phone);
+    return this.agents.values().filter((a) => a.ownerPhone === phone);
   }
 
   /** List all registered agents (all statuses). */
   list(): AgentRegistration[] {
-    return [...this.agents.values()];
+    return this.agents.values();
   }
 
   /** List only approved agents. */

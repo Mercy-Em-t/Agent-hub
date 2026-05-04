@@ -9,6 +9,7 @@ import { agentRouter } from './routes/agents';
 import { registryRouter } from './routes/registry';
 import { whatsappRouter } from './routes/whatsapp';
 import { capabilitiesRouter } from './routes/capabilities';
+import { operatorAuthMiddleware } from './middleware/operatorAuth';
 
 export function createApp(
   sessions: SessionManager,
@@ -35,8 +36,8 @@ export function createApp(
   // Discovery endpoints — agent-first, no auth needed
   app.use('/', capabilitiesRouter());
 
-  // Registry routes (agent + site registration, with WhatsApp notifications)
-  app.use('/registry', registryRouter(agentRegistry, siteRegistry, whatsapp));
+  // Registry routes (agent + site registration, with WhatsApp notifications + operator auth)
+  app.use('/registry', registryRouter(agentRegistry, siteRegistry, whatsapp, operatorAuthMiddleware));
 
   // Agent execution routes (gateway-protected)
   app.use('/agents', agentRouter(sessions, gateway, store));

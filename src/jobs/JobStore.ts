@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { Store, MemoryStore } from '../storage/Store';
 
 export type JobStatus = 'queued' | 'running' | 'completed' | 'failed';
 
@@ -27,7 +28,11 @@ export interface JobRecord {
  * background and calls `complete` or `fail` when done.
  */
 export class JobStore {
-  private readonly jobs: Map<string, JobRecord> = new Map();
+  private readonly jobs: Store<JobRecord>;
+
+  constructor(store?: Store<JobRecord>) {
+    this.jobs = store ?? new MemoryStore<JobRecord>();
+  }
 
   /** Create a new queued job record and return it. */
   create(agentId: string): JobRecord {
@@ -46,6 +51,7 @@ export class JobStore {
     const job = this.jobs.get(jobId);
     if (job) {
       job.status = 'running';
+      this.jobs.set(jobId, job);
     }
   }
 
@@ -60,6 +66,7 @@ export class JobStore {
       job.status = 'completed';
       job.results = results;
       job.finishedAt = new Date().toISOString();
+      this.jobs.set(jobId, job);
     }
   }
 
@@ -70,6 +77,7 @@ export class JobStore {
       job.status = 'failed';
       job.error = error;
       job.finishedAt = new Date().toISOString();
+      this.jobs.set(jobId, job);
     }
   }
 
@@ -80,6 +88,6 @@ export class JobStore {
 
   /** List all jobs. */
   list(): JobRecord[] {
-    return [...this.jobs.values()];
+    return this.jobs.values();
   }
 }

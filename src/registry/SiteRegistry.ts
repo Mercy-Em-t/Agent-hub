@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { Store, MemoryStore } from '../storage/Store';
 
 export type SiteStatus = 'pending' | 'approved' | 'revoked';
 
@@ -53,7 +54,11 @@ export type SiteRegistrationInput = Omit<
  *   revoke()   → status: "revoked"   (agents are immediately blocked)
  */
 export class SiteRegistry {
-  private readonly sites: Map<string, SiteRegistration> = new Map();
+  private readonly sites: Store<SiteRegistration>;
+
+  constructor(store?: Store<SiteRegistration>) {
+    this.sites = store ?? new MemoryStore<SiteRegistration>();
+  }
 
   /**
    * Register a new site.  Returns the full registration including the
@@ -87,6 +92,7 @@ export class SiteRegistry {
     }
     site.status = 'approved';
     site.approvedAt = new Date();
+    this.sites.set(siteId, site);
     return site;
   }
 
@@ -95,6 +101,7 @@ export class SiteRegistry {
     const site = this.getOrThrow(siteId);
     site.status = 'revoked';
     site.revokedAt = new Date();
+    this.sites.set(siteId, site);
     return site;
   }
 
@@ -125,7 +132,7 @@ export class SiteRegistry {
 
   /** List all site registrations. */
   list(): SiteRegistration[] {
-    return [...this.sites.values()];
+    return this.sites.values();
   }
 
   /** List only approved sites. */

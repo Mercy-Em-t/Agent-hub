@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { AgentRegistry } from '../../registry/AgentRegistry';
 import { SiteRegistry } from '../../registry/SiteRegistry';
@@ -74,8 +74,12 @@ export function registryRouter(
   agentRegistry: AgentRegistry,
   siteRegistry: SiteRegistry,
   notifier?: IWhatsAppNotifier,
+  operatorAuth?: (req: Request, res: Response, next: NextFunction) => void,
 ): Router {
   const router = Router();
+
+  // Inline no-op fallback so routes don't need to branch
+  const auth = operatorAuth ?? ((_req: Request, _res: Response, next: NextFunction) => next());
 
   // ──────────────────────────────────────────── Agent registration endpoints
 
@@ -138,8 +142,9 @@ export function registryRouter(
   /**
    * PATCH /registry/agents/:agentId/approve
    * Approve a registered agent, granting it permission to operate.
+   * Requires operator authentication when OPERATOR_API_KEY is set.
    */
-  router.patch('/agents/:agentId/approve', (req: Request, res: Response) => {
+  router.patch('/agents/:agentId/approve', auth, (req: Request, res: Response) => {
     try {
       const agent = agentRegistry.approve(req.params.agentId);
       notifyOwner(
@@ -156,8 +161,9 @@ export function registryRouter(
   /**
    * PATCH /registry/agents/:agentId/revoke
    * Revoke an agent, immediately blocking it from running any further tasks.
+   * Requires operator authentication when OPERATOR_API_KEY is set.
    */
-  router.patch('/agents/:agentId/revoke', (req: Request, res: Response) => {
+  router.patch('/agents/:agentId/revoke', auth, (req: Request, res: Response) => {
     try {
       const agent = agentRegistry.revoke(req.params.agentId);
       notifyOwner(
@@ -217,8 +223,9 @@ export function registryRouter(
   /**
    * PATCH /registry/sites/:siteId/approve
    * Approve a registered site, allowing agents to visit it.
+   * Requires operator authentication when OPERATOR_API_KEY is set.
    */
-  router.patch('/sites/:siteId/approve', (req: Request, res: Response) => {
+  router.patch('/sites/:siteId/approve', auth, (req: Request, res: Response) => {
     try {
       const site = siteRegistry.approve(req.params.siteId);
       res.json(site);
@@ -230,8 +237,9 @@ export function registryRouter(
   /**
    * PATCH /registry/sites/:siteId/revoke
    * Revoke a site, immediately blocking agent access.
+   * Requires operator authentication when OPERATOR_API_KEY is set.
    */
-  router.patch('/sites/:siteId/revoke', (req: Request, res: Response) => {
+  router.patch('/sites/:siteId/revoke', auth, (req: Request, res: Response) => {
     try {
       const site = siteRegistry.revoke(req.params.siteId);
       res.json(site);
