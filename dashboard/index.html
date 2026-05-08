@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinematic Director's Dashboard - Pre-Viz</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Montserrat:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!--  HEADER BAR -->
+        <header class="app-header">
+            <div class="header-brand">
+                <h1>CINEMATIC DIRECTOR'S DASHBOARD</h1>
+                <span class="sub-brand">PRE-VISUALIZATION ENGINE // FRAME 5</span>
+            </div>
+            <div class="system-status">
+                <span class="status-indicator online"></span>
+                <span class="status-label">BLENDER CORE CONNECTED</span>
+            </div>
+        </header>
+
+        <!-- MAIN LAYOUT -->
+        <main class="dashboard-grid">
+            
+            <!-- LEFT: ASSET & ENVIRONMENT MANAGER -->
+            <section class="panel left-panel">
+                <div class="panel-header">
+                    <h2>ASSET MANAGER</h2>
+                    <span class="panel-icon">⚙️</span>
+                </div>
+                <div class="panel-content">
+                    <div class="control-group">
+                        <label for="project-selector">ACTIVE PROJECT ISOLATION</label>
+                        <select id="project-selector" style="background: rgba(253, 184, 19, 0.1); border: 1px solid rgba(253,184,19,0.4); color: #fdb813; padding: 8px; border-radius: 4px; width: 100%; font-weight: bold;">
+                            <option value="the_room_breathes">The Room Breathes (Active)</option>
+                            <option value="isolated_sanctuary">Isolated Sanctuary</option>
+                            <option value="cosmic_vessel">Cosmic Vessel Voyage</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="scene-desc">SCENE DESCRIPTION (PROMPT)</label>
+                        <textarea id="scene-desc" style="height: 60px; background: rgba(0,0,0,0.3); border: 1px solid rgba(253,184,19,0.3); color: #fff; padding: 8px; border-radius: 4px; font-family: inherit; font-size: 12px; width: 100%; box-sizing: border-box; resize: vertical;">The camera enters past her shoulder, holding still as her pen pauses, then turns as she locks eyes.</textarea>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="ascii-diagram">ASCII SCENE DIAGRAM (LAYOUT GRID)</label>
+                        <textarea id="ascii-diagram" style="height: 100px; background: rgba(0,0,0,0.4); border: 1px solid rgba(253,184,19,0.3); color: #10b981; padding: 8px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 11px; width: 100%; box-sizing: border-box; resize: vertical; line-height: 1.2;">
++------------------------------------+
+|  [H a l l w a y]                   |
+|         |                          |
+|         v                          |
+|  [W i n d o w]  ~~~> [D e s k]     |
++------------------------------------+
+                        </textarea>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="math-plot">CAMERA CURVE EQUATION (Y-Axis Path)</label>
+                        <input type="text" id="math-plot" value="1 - Math.pow(1 - t, 3)" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(253,184,19,0.3); color: #fff; padding: 8px; border-radius: 4px; font-family: monospace; width: 100%; box-sizing: border-box;">
+                        <span style="font-size: 10px; color: #888; display: block; margin-top: 4px;">Dynamic 't' (0.0 to 1.0) based on frame timeline.</span>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="shelf-preset">SHELF PRESETS</label>
+                        <select id="shelf-preset" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(253,184,19,0.3); color: #fff; padding: 8px; border-radius: 4px; width: 100%;">
+                            <option value="lived-in">Lived-In (Cozy & Warm)</option>
+                            <option value="dusty">Dusty (Old & Abandoned)</option>
+                            <option value="organized">Organized (Neat & Clean)</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="curtain-speed">CURTAIN DRIFT SPEED <span class="val-display" id="curtain-speed-val">1.2x</span></label>
+                        <input type="range" id="curtain-speed" min="0.1" max="3.0" step="0.1" value="1.2">
+                    </div>
+
+                    <div class="control-group">
+                        <label for="light-intensity">SUNLIGHT INTENSITY <span class="val-display" id="light-intensity-val">5.0 kW</span></label>
+                        <input type="range" id="light-intensity" min="1.0" max="10.0" step="0.5" value="5.0">
+                    </div>
+                </div>
+            </section>
+
+            <!-- CENTER: VIEWPORT & TIMELINE -->
+            <section class="panel center-panel">
+                <div class="panel-header">
+                    <h2>LIVE VIEWPORT PREVIEW</h2>
+                    <span class="panel-status render-active">ACTIVE PRE-VIZ</span>
+                </div>
+                <div class="viewport-container">
+                    <div class="live-render" id="render-viewport">
+                        <!-- We embed the pre-viz image or a beautiful placeholder with styling -->
+                        <div class="glowing-lens-flare"></div>
+                        <div class="render-overlay">
+                            <div class="cam-stats">CAM_01 // 55mm // f/1.8 // CYCLES</div>
+                            <div class="frame-counter" id="viewport-frame-counter">FRAME 000 // 200</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NARRATIVE TIMELINE -->
+                <div class="timeline-container">
+                    <div class="timeline-controls">
+                        <button class="btn btn-play" id="btn-play">▶ PLAY</button>
+                        <button class="btn btn-pause" id="btn-pause">❚❚ PAUSE</button>
+                    </div>
+                    <div class="timeline-slider-wrapper">
+                        <input type="range" id="timeline-slider" min="0" max="200" value="0">
+                        <div class="narrative-markers">
+                            <span class="marker active" style="left: 0%;" data-frame="0">Start Drift</span>
+                            <span class="marker" style="left: 30%;" data-frame="60">Shoulder Pivot</span>
+                            <span class="marker" style="left: 60%;" data-frame="120">Unfinished Pause</span>
+                            <span class="marker" style="left: 70%;" data-frame="140">◉ Gaze Lock</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RIGHT: CAMERA SENTIENCE CONTROLLER -->
+            <section class="panel right-panel">
+                <div class="panel-header">
+                    <h2>CAMERA SENTIENCE</h2>
+                    <span class="panel-icon">👁️</span>
+                </div>
+                <div class="panel-content">
+                    <div class="control-group">
+                        <label for="noise-preset">MOTION NOISE PRESET</label>
+                        <select id="noise-preset">
+                            <option value="breathing">Breathing (Sinusoidal Drift)</option>
+                            <option value="handheld">Handheld (Organic Wobble)</option>
+                            <option value="tripod_shake">Tripod Jitter (Wind Vibration)</option>
+                            <option value="stable">Stable (Static Track)</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="camera-smoothing">SMOOTHING (LERP) <span class="val-display" id="camera-smoothing-val">0.85</span></label>
+                        <input type="range" id="camera-smoothing" min="0.10" max="1.00" step="0.05" value="0.85">
+                    </div>
+
+                    <div class="control-group">
+                        <label>FOCAL SHIFT SETTING</label>
+                        <div class="toggle-group">
+                            <button class="btn-toggle active" id="focal-diary">FOCUS DIARY</button>
+                            <button class="btn-toggle" id="focal-eyes">FOCUS EYES (◉)</button>
+                        </div>
+                    </div>
+
+                    <!-- AUDIO VISUALIZER -->
+                    <div class="audio-visualizer-container">
+                        <label>AUDIO CHANNELS // SYNC SWELL</label>
+                        <div class="visualizer-bars" id="audio-visualizer">
+                            <div class="bar" style="height: 20%;"></div>
+                            <div class="bar" style="height: 35%;"></div>
+                            <div class="bar" style="height: 50%;"></div>
+                            <div class="bar" style="height: 40%;"></div>
+                            <div class="bar swell" style="height: 10%;"></div>
+                            <div class="bar swell" style="height: 5%;"></div>
+                            <div class="bar" style="height: 30%;"></div>
+                            <div class="bar" style="height: 15%;"></div>
+                        </div>
+                        <div class="visualizer-labels">
+                            <span>PEN SCRATCH</span>
+                            <span class="swell-txt">◉ CHOIR SWELL</span>
+                            <span>ROOM HUM</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- BOTTOM PANEL: BLENDER SCRIPTING BRIDGE -->
+        <footer class="panel bottom-panel">
+            <div class="panel-header">
+                <h2>THE ENGINE ROOM // BLENDER SCRIPTING BRIDGE</h2>
+                <button class="btn btn-copy" id="btn-copy">📋 COPY PYTHON CODE</button>
+            </div>
+            <div class="code-container">
+                <pre><code id="python-code-block"># Live generated python code will appear here...</code></pre>
+            </div>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
