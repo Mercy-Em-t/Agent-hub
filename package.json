@@ -1,0 +1,65 @@
+{
+  "name": "agent-hub",
+  "version": "0.1.0",
+  "description": "A platform for onboarding AI agents to work alongside humans in the tech space — enabling agents to navigate websites, interact with UI elements, fill forms, and complete web-based workflows.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "mcp": "ts-node src/mcp/index.ts",
+    "test": "jest --runInBand",
+    "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",
+    "lint:fix": "eslint 'src/**/*.ts' 'tests/**/*.ts' --fix",
+    "typecheck": "tsc --noEmit"
+  },
+  "bin": {
+    "agent-hub": "dist/cli/index.js"
+  },
+  "keywords": [
+    "ai-agents",
+    "browser-automation",
+    "playwright",
+    "agent-hub",
+    "rpa",
+    "web-automation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@playwright/test": "^1.44.0",
+    "better-sqlite3": "^12.9.0",
+    "express": "^4.19.2",
+    "playwright": "^1.44.0",
+    "uuid": "^9.0.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.14.2",
+    "@types/supertest": "^6.0.2",
+    "@types/uuid": "^9.0.8",
+    "@typescript-eslint/eslint-plugin": "^7.13.0",
+    "@typescript-eslint/parser": "^7.13.0",
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.1.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.ts"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.ts",
+      "!src/index.ts"
+    ]
+  }
+}

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinematic Director's Dashboard - Pre-Viz</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Montserrat:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!--  HEADER BAR -->
+        <header class="app-header">
+            <div class="header-brand">
+                <h1>CINEMATIC DIRECTOR'S DASHBOARD</h1>
+                <span class="sub-brand">PRE-VISUALIZATION ENGINE // FRAME 5</span>
+            </div>
+            <div class="system-status">
+                <span class="status-indicator online"></span>
+                <span class="status-label">BLENDER CORE CONNECTED</span>
+                <span style="margin-left: 15px; width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: #ef4444;" class="status-indicator" id="local-bridge-status-dot"></span>
+                <span class="status-label" id="local-bridge-status-txt">LOCAL DISK BRIDGE DISCONNECTED</span>
+            </div>
+        </header>
+
+        <!-- MAIN LAYOUT -->
+        <main class="dashboard-grid">
+            
+            <!-- LEFT: ASSET & ENVIRONMENT MANAGER -->
+            <section class="panel left-panel">
+                <div class="panel-header">
+                    <h2>ASSET MANAGER</h2>
+                    <span class="panel-icon">⚙️</span>
+                </div>
+                <div class="panel-content">
+                    <div class="control-group">
+                        <label for="project-selector">ACTIVE PROJECT ISOLATION</label>
+                        <select id="project-selector" style="background: rgba(253, 184, 19, 0.1); border: 1px solid rgba(253,184,19,0.4); color: #fdb813; padding: 8px; border-radius: 4px; width: 100%; font-weight: bold;">
+                            <option value="the_room_breathes">The Room Breathes (Active)</option>
+                            <option value="isolated_sanctuary">Isolated Sanctuary</option>
+                            <option value="cosmic_vessel">Cosmic Vessel Voyage</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="scene-desc">SCENE DESCRIPTION (PROMPT)</label>
+                        <textarea id="scene-desc" style="height: 60px; background: rgba(0,0,0,0.3); border: 1px solid rgba(253,184,19,0.3); color: #fff; padding: 8px; border-radius: 4px; font-family: inherit; font-size: 12px; width: 100%; box-sizing: border-box; resize: vertical;">The camera enters past her shoulder, holding still as her pen pauses, then turns as she locks eyes.</textarea>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="ascii-diagram">ASCII SCENE DIAGRAM (LAYOUT GRID)</label>
+                        <textarea id="ascii-diagram" style="height: 100px; background: rgba(0,0,0,0.4); border: 1px solid rgba(253,184,19,0.3); color: #10b981; padding: 8px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 11px; width: 100%; box-sizing: border-box; resize: vertical; line-height: 1.2;">
++------------------------------------+
+|  [H a l l w a y]                   |
+|         |                          |
+|         v                          |
+|  [W i n d o w]  ~~~> [D e s k]     |
++------------------------------------+
+                        </textarea>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="math-plot">CAMERA CURVE EQUATION (Y-Axis Path)</label>
+                        <input type="text" id="math-plot" value="1 - Math.pow(1 - t, 3)" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(253,184,19,0.3); color: #fff; padding: 8px; border-radius: 4px; font-family: monospace; width: 100%; box-sizing: border-box;">
+                        <span style="font-size: 10px; color: #888; display: block; margin-top: 4px;">Dynamic 't' (0.0 to 1.0) based on frame timeline.</span>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="shelf-preset">SHELF PRESETS</label>
+                        <select id="shelf-preset" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(253,184,19,0.3); color: #fff; padding: 8px; border-radius: 4px; width: 100%;">
+                            <option value="lived-in">Lived-In (Cozy & Warm)</option>
+                            <option value="dusty">Dusty (Old & Abandoned)</option>
+                            <option value="organized">Organized (Neat & Clean)</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="curtain-speed">CURTAIN DRIFT SPEED <span class="val-display" id="curtain-speed-val">1.2x</span></label>
+                        <input type="range" id="curtain-speed" min="0.1" max="3.0" step="0.1" value="1.2">
+                    </div>
+
+                    <div class="control-group">
+                        <label for="light-intensity">SUNLIGHT INTENSITY <span class="val-display" id="light-intensity-val">5.0 kW</span></label>
+                        <input type="range" id="light-intensity" min="1.0" max="10.0" step="0.5" value="5.0">
+                    </div>
+                </div>
+            </section>
+
+            <!-- CENTER: VIEWPORT & TIMELINE -->
+            <section class="panel center-panel">
+                <div class="panel-header">
+                    <h2>LIVE VIEWPORT PREVIEW</h2>
+                    <span class="panel-status render-active">ACTIVE PRE-VIZ</span>
+                </div>
+                <!-- SUITE TABS NAVIGATION -->
+                <div style="display: flex; gap: 4px; background: rgba(5, 8, 17, 0.6); padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.05); overflow-x: auto;">
+                    <button class="btn-toggle active" id="suite-tab-storyboard" style="padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 10px; text-transform: uppercase; white-space: nowrap;">🎬 Storyboards</button>
+                    <button class="btn-toggle" id="suite-tab-whiteboard" style="padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 10px; text-transform: uppercase; white-space: nowrap;">🎨 Sketch Whiteboard</button>
+                    <button class="btn-toggle" id="suite-tab-ascii" style="padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 10px; text-transform: uppercase; white-space: nowrap;">📸 Image To ASCII</button>
+                    <button class="btn-toggle" id="suite-tab-library" style="padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 10px; text-transform: uppercase; white-space: nowrap;">📦 Asset Library</button>
+                    <button class="btn-toggle" id="suite-tab-diary" style="padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 10px; text-transform: uppercase; white-space: nowrap;">📔 Project Diary</button>
+                </div>
+
+                <!-- 1. STORYBOARD & TIMELINE VIEW -->
+                <div id="suite-content-storyboard" style="display: flex; flex-direction: column; width: 100%;">
+                    <div class="viewport-container" style="padding: 15px;">
+                        <!-- WORKSPACE TABS (GRID VS CYCLES RENDER) -->
+                        <div style="display: flex; gap: 8px; margin-bottom: 10px; width: 100%;">
+                            <button class="btn-toggle active" id="tab-3d" style="flex: 1; padding: 6px 10px; font-weight: bold; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #10b981; border-radius: 4px; cursor: pointer; text-transform: uppercase; font-size: 10px;">👁️ Blender 3D Space (Grid)</button>
+                            <button class="btn-toggle" id="tab-cycles" style="flex: 1; padding: 6px 10px; font-weight: bold; background: rgba(253, 184, 19, 0.05); border: 1px solid rgba(253, 184, 19, 0.2); color: #888; border-radius: 4px; cursor: pointer; text-transform: uppercase; font-size: 10px;">🎬 Cycles Volumetric Render</button>
+                        </div>
+                        <div class="live-render" id="render-viewport" style="background-image: url('blockout_view.png'); background-size: cover; background-position: center; transition: background-image 0.3s ease-in-out; height: 350px; width: 100%;">
+                            <div class="glowing-lens-flare"></div>
+                            <div class="render-overlay">
+                                <div class="cam-stats" id="cam-lens-stats">3D VIEWPORT // WIREFRAME GRID // 35mm</div>
+                                <div class="frame-counter" id="viewport-frame-counter">FRAME 000 // 200</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NARRATIVE TIMELINE -->
+                    <div class="timeline-container" style="padding: 15px;">
+                        <div class="timeline-controls">
+                            <button class="btn btn-play" id="btn-play">▶ PLAY</button>
+                            <button class="btn btn-pause" id="btn-pause">❚❚ PAUSE</button>
+                        </div>
+                        <div class="timeline-slider-wrapper">
+                            <input type="range" id="timeline-slider" min="0" max="200" value="0">
+                            <div class="narrative-markers">
+                                <span class="marker active" style="left: 0%;" data-frame="0">Start Drift</span>
+                                <span class="marker" style="left: 30%;" data-frame="60">Shoulder Pivot</span>
+                                <span class="marker" style="left: 60%;" data-frame="120">Unfinished Pause</span>
+                                <span class="marker" style="left: 70%;" data-frame="140">◉ Gaze Lock</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. SKETCH WHITEBOARD VIEW -->
+                <div id="suite-content-whiteboard" style="display: none; padding: 20px; flex-direction: column; gap: 15px; width: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="font-size: 0.85rem; color: #94a3b8; font-weight: bold; text-transform: uppercase;">🎨 Dynamic 2D Scene & Camera Sketchboard</h3>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-toggle active" id="whiteboard-draw-btn" style="padding: 4px 8px; font-size: 10px;">✎ DRAW</button>
+                            <button class="btn-toggle" id="whiteboard-erase-btn" style="padding: 4px 8px; font-size: 10px;">⌫ ERASE</button>
+                            <button class="btn btn-copy" id="whiteboard-clear-btn" style="padding: 4px 8px; font-size: 10px; border-color: rgba(239, 68, 68, 0.3); color: #ef4444;">CLEAR</button>
+                        </div>
+                    </div>
+                    <canvas id="whiteboard-canvas" width="600" height="320" style="background: #03050b; border: 1px solid rgba(253, 184, 19, 0.2); border-radius: 8px; cursor: crosshair; width: 100%; aspect-ratio: 16/9;"></canvas>
+                    <span style="font-size: 10px; color: #64748b; text-align: center;">Sketch your camera path vectors, desk bounds, and character placements directly onto the whiteboard space.</span>
+                </div>
+
+                <!-- 3. IMAGE TO ASCII CONVERTER VIEW -->
+                <div id="suite-content-ascii" style="display: none; padding: 20px; flex-direction: column; gap: 15px; width: 100%;">
+                    <h3 style="font-size: 0.85rem; color: #94a3b8; font-weight: bold; text-transform: uppercase;">📸 Sketch-To-ASCII Spatial Grid Converter</h3>
+                    <div style="display: flex; gap: 10px; align-items: center; background: rgba(5,8,17,0.4); padding: 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                        <input type="file" id="ascii-upload" accept="image/*" style="display: none;">
+                        <button class="btn" onclick="document.getElementById('ascii-upload').click()" style="font-size: 11px;">📂 SELECT SKETCH / DIAGRAM IMAGE</button>
+                        <span id="ascii-file-name" style="font-size: 11px; color: #64748b;">No sketch uploaded yet...</span>
+                    </div>
+                    <div style="background: #03050b; border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 15px; overflow: auto; max-height: 280px;">
+                        <pre id="ascii-output-pre" style="font-family: 'Courier New', monospace; font-size: 8px; line-height: 1.0; color: #10b981; white-space: pre; margin: 0; text-align: center;">Paste an image or draw on the whiteboard to generate high-contrast ASCII art diagrams!</pre>
+                    </div>
+                </div>
+
+                <!-- 4. ASSET LIBRARY & SCENE CONSTRUCTOR -->
+                <div id="suite-content-library" style="display: none; padding: 20px; flex-direction: column; gap: 15px; width: 100%;">
+                    <h3 style="font-size: 0.85rem; color: #94a3b8; font-weight: bold; text-transform: uppercase;">🛠️ 3D Scene Constructor & Custom Object Editor</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        
+                        <!-- LEFT PANEL: THE CONSTRUCTOR FORM -->
+                        <div style="background: rgba(5, 8, 17, 0.5); padding: 15px; border-radius: 8px; border: 1px solid rgba(253, 184, 19, 0.2); display: flex; flex-direction: column; gap: 12px;">
+                            <h4 style="font-size: 11px; color: #fdb813; font-weight: bold; text-transform: uppercase; margin: 0 0 5px 0;">➕ Create New Object</h4>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <label style="font-size: 9px; color: #888;">OBJECT TYPE</label>
+                                    <select id="constructor-type" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px;">
+                                        <option value="cube">■ Primitive Cube</option>
+                                        <option value="cylinder">⬡ Primitive Cylinder</option>
+                                        <option value="sphere">◉ UV Sphere</option>
+                                        <option value="spotlight">💡 Volumetric Spotlight</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <label style="font-size: 9px; color: #888;">OBJECT NAME</label>
+                                    <input type="text" id="constructor-name" value="CustomMesh" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px;">
+                                </div>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <label style="font-size: 9px; color: #888;">LOCATION COORDINATES (X, Y, Z)</label>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                                    <input type="number" step="0.1" id="constructor-x" value="0.0" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; text-align: center;">
+                                    <input type="number" step="0.1" id="constructor-y" value="2.0" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; text-align: center;">
+                                    <input type="number" step="0.1" id="constructor-z" value="1.0" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; text-align: center;">
+                                </div>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <label style="font-size: 9px; color: #888;">SCALE / RADIUS (Width, Depth, Height)</label>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                                    <input type="number" step="0.1" id="constructor-scale-x" value="1.0" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; text-align: center;">
+                                    <input type="number" step="0.1" id="constructor-scale-y" value="1.0" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; text-align: center;">
+                                    <input type="number" step="0.1" id="constructor-scale-z" value="1.0" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; text-align: center;">
+                                </div>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <label style="font-size: 9px; color: #888;">SURFACE MATERIAL CHARACTERISTIC</label>
+                                <select id="constructor-material" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px;">
+                                    <option value="Gold_Glow">🌟 Glowing Golden (Emission)</option>
+                                    <option value="Emerald_Glow">💚 Emerald Green (Luminous)</option>
+                                    <option value="Cosmic_Silver">🛸 Cosmic Metallic (Reflective)</option>
+                                    <option value="Rustic_Wood">🪵 Oak Timber (Matte)</option>
+                                    <option value="Velvet_Red">🩸 Velvet Crimson (Deep Gloss)</option>
+                                </select>
+                            </div>
+
+                            <div style="display: flex; gap: 10px; margin-top: 5px;">
+                                <button class="btn" id="btn-constructor-add" style="flex: 1; font-size: 10px; background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #10b981; font-weight: bold;">➕ ADD OBJECT</button>
+                                <button class="btn" id="btn-constructor-delete" style="flex: 1; font-size: 10px; background: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #ef4444; font-weight: bold;">❌ REMOVE OBJECT</button>
+                            </div>
+                        </div>
+
+                        <!-- RIGHT PANEL: ACTIVE OBJECTS TABLE -->
+                        <div style="background: rgba(5, 8, 17, 0.4); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 10px;">
+                            <h4 style="font-size: 11px; color: #94a3b8; font-weight: bold; text-transform: uppercase; margin: 0;">📦 Active Scene Objects</h4>
+                            <div style="overflow-y: auto; max-height: 250px; display: flex; flex-direction: column; gap: 8px;" id="constructor-objects-list">
+                                <!-- Dynamic active objects will appear here -->
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+
+                <!-- 5. PROJECT DIARY & NOTEBOOK VIEW -->
+                <div id="suite-content-diary" style="display: none; padding: 20px; flex-direction: column; gap: 15px; width: 100%;">
+                    <h3 style="font-size: 0.85rem; color: #94a3b8; font-weight: bold; text-transform: uppercase;">📔 Studio Project Notebook & Creative Diary</h3>
+                    <textarea id="project-notebook-diary" style="height: 250px; background: rgba(5, 8, 17, 0.7); border: 1px solid rgba(253, 184, 19, 0.3); color: #fff; padding: 15px; border-radius: 8px; font-family: 'Georgia', serif; font-size: 14px; line-height: 1.8; width: 100%; box-sizing: border-box; resize: vertical;" placeholder="Write down your director thoughts, narrative lines, or creative feedback here. Everything auto-saves to your isolated project!"></textarea>
+                    <span style="font-size: 10px; color: #64748b; text-align: center;">This notebook is isolated and auto-saves individually per active project.</span>
+                </div>
+            </section>
+
+            <!-- RIGHT: CAMERA SENTIENCE CONTROLLER -->
+            <section class="panel right-panel">
+                <div class="panel-header">
+                    <h2>CAMERA SENTIENCE</h2>
+                    <span class="panel-icon">👁️</span>
+                </div>
+                <div class="panel-content">
+                    <div class="control-group">
+                        <label for="noise-preset">MOTION NOISE PRESET</label>
+                        <select id="noise-preset">
+                            <option value="breathing">Breathing (Sinusoidal Drift)</option>
+                            <option value="handheld">Handheld (Organic Wobble)</option>
+                            <option value="tripod_shake">Tripod Jitter (Wind Vibration)</option>
+                            <option value="stable">Stable (Static Track)</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="camera-smoothing">SMOOTHING (LERP) <span class="val-display" id="camera-smoothing-val">0.85</span></label>
+                        <input type="range" id="camera-smoothing" min="0.10" max="1.00" step="0.05" value="0.85">
+                    </div>
+
+                    <div class="control-group">
+                        <label>FOCAL SHIFT SETTING</label>
+                        <div class="toggle-group">
+                            <button class="btn-toggle active" id="focal-diary">FOCUS DIARY</button>
+                            <button class="btn-toggle" id="focal-eyes">FOCUS EYES (◉)</button>
+                        </div>
+                    </div>
+
+                    <!-- AUDIO VISUALIZER -->
+                    <div class="audio-visualizer-container">
+                        <label>AUDIO CHANNELS // SYNC SWELL</label>
+                        <div class="visualizer-bars" id="audio-visualizer">
+                            <div class="bar" style="height: 20%;"></div>
+                            <div class="bar" style="height: 35%;"></div>
+                            <div class="bar" style="height: 50%;"></div>
+                            <div class="bar" style="height: 40%;"></div>
+                            <div class="bar swell" style="height: 10%;"></div>
+                            <div class="bar swell" style="height: 5%;"></div>
+                            <div class="bar" style="height: 30%;"></div>
+                            <div class="bar" style="height: 15%;"></div>
+                        </div>
+                        <div class="visualizer-labels">
+                            <span>PEN SCRATCH</span>
+                            <span class="swell-txt">◉ CHOIR SWELL</span>
+                            <span>ROOM HUM</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- BOTTOM PANEL: BLENDER SCRIPTING BRIDGE -->
+        <footer class="panel bottom-panel">
+            <div class="panel-header">
+                <h2>THE ENGINE ROOM // BLENDER SCRIPTING BRIDGE</h2>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-copy" id="btn-copy">📋 COPY PYTHON CODE</button>
+                    <button class="btn" id="btn-run-blender" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.4); color: #10b981; font-weight: bold; cursor: pointer; padding: 6px 12px; border-radius: 4px; font-size: 11px; display: flex; align-items: center; gap: 6px;">🚀 RUN BLENDER JOB (LOCAL GPU)</button>
+                </div>
+            </div>
+            <div class="code-container">
+                <pre><code id="python-code-block"># Live generated python code will appear here...</code></pre>
+            </div>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

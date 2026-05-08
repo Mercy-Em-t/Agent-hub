@@ -1,0 +1,316 @@
+import { Router, Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
+import { AgentRegistry } from '../../registry/AgentRegistry';
+import { SiteRegistry } from '../../registry/SiteRegistry';
+import type { IWhatsAppNotifier } from '../../notifications/WhatsAppNotifier';
+
+// ── Pagination helper ─────────────────────────────────────────────────────────
+
+function parsePagination(query: Record<string, unknown>): { limit: number; offset: number } {
+  const limit  = Math.max(1, Math.min(1000, parseInt(String(query.limit  ?? '100'), 10) || 100));
+  const offset = Math.max(0, parseInt(String(query.offset ?? '0'),   10) || 0);
+  return { limit, offset };
+}
+
+function paginate<T>(items: T[], limit: number, offset: number) {
+  return {
+    total: items.length,
+    limit,
+    offset,
+    items: items.slice(offset, offset + limit),
+  };
+}
+
+// ── Zod schemas ──────────────────────────────────────────────────────────────
+
+const AgentRegisterSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().min(1),
+  owner: z.string().min(1),
+  contactEmail: z.string().email(),
+  purpose: z.string().min(1),
+  /** High-level outcomes the agent is trying to achieve */
+  goals: z.array(z.string()).default([]),
+  /** Ordered SOP steps describing how the agent works */
+  workingProcedure: z.array(z.string()).default([]),
+  /** Explicit responsibility scope */
+  responsibilityBounds: z
+    .object({
+      responsible: z.array(z.string()).default([]),
+      notResponsible: z.array(z.string()).default([]),
+    })
+    .optional(),
+  /** Primary home website URL */
+  website: z.string().url('Must be a valid URL').optional(),
+  allowedDomains: z.array(z.string()).default([]),
+  deniedDomains: z.array(z.string()).default([]),
+  allowedTools: z.array(z.string()).default([]),
+  constraints: z.array(z.string()).default([]),
+  /**
+   * Owner's WhatsApp number in E.164 format (e.g. "+1234567890").
+   * When provided, lifecycle notifications are sent to this number.
+   */
+  ownerPhone: z
+    .string()
+    .regex(/^\+[1-9]\d{7,14}$/, 'Must be a valid E.164 phone number (e.g. "+1234567890")')
+    .optional(),
+});
+
+const AgentUpdateSchema = z.object({
+  description: z.string().min(1).optional(),
+  purpose: z.string().min(1).optional(),
+  goals: z.array(z.string()).optional(),
+  workingProcedure: z.array(z.string()).optional(),
+  responsibilityBounds: z
+    .object({
+      responsible: z.array(z.string()).default([]),
+      notResponsible: z.array(z.string()).default([]),
+    })
+    .optional(),
+  website: z.string().url('Must be a valid URL').optional(),
+  allowedDomains: z.array(z.string()).optional(),
+  deniedDomains: z.array(z.string()).optional(),
+  allowedTools: z.array(z.string()).optional(),
+  constraints: z.array(z.string()).optional(),
+});
+
+const SiteRegisterSchema = z.object({
+  domain: z
+    .string()
+    .min(1)
+    .regex(
+      /^(\*\.)?[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$/,
+      'Must be a valid domain or wildcard domain (e.g. example.com or *.example.com)',
+    ),
+  ownerName: z.string().min(1),
+  contactEmail: z.string().email(),
+  description: z.string().min(1),
+  allowedCapabilities: z.array(z.string()).default([]),
+});
+
+// ── Notification helpers ─────────────────────────────────────────────────────
+
+function notifyOwner(
+  notifier: IWhatsAppNotifier | undefined,
+  phone: string | undefined,
+  message: string,
+): void {
+  if (!notifier || !phone) return;
+  notifier.send(phone, message).catch((err: unknown) => {
+    // Fire-and-forget: notification failures must not fail the API request,
+    // but log them so delivery issues are diagnosable in production.
+    console.error('[WhatsApp] notification delivery failed:', (err as Error).message ?? err);
+  });
+}
+
+// ── Router factory ───────────────────────────────────────────────────────────
+
+export function registryRouter(
+  agentRegistry: AgentRegistry,
+  siteRegistry: SiteRegistry,
+  notifier?: IWhatsAppNotifier,
+  operatorAuth?: (req: Request, res: Response, next: NextFunction) => void,
+): Router {
+  const router = Router();
+
+  // Inline no-op fallback so routes don't need to branch
+  const auth = operatorAuth ?? ((_req: Request, _res: Response, next: NextFunction) => next());
+
+  // ──────────────────────────────────────────── Agent registration endpoints
+
+  /**
+   * POST /registry/agents
+   * Register a new AI agent.  Returns the full registration including
+   * the generated agentId and apiKey (store the apiKey — it is only shown once).
+   * Status starts as "pending"; an operator must call PATCH …/approve to allow operation.
+   *
+   * New onboarding fields (all optional):
+   *   goals             – what the agent is trying to achieve
+   *   workingProcedure  – ordered steps of its operating procedure
+   *   responsibilityBounds – what it IS and IS NOT responsible for
+   *   website           – primary home URL
+   *   ownerPhone        – E.164 WhatsApp number for lifecycle notifications
+   */
+  router.post('/agents', (req: Request, res: Response) => {
+    const parsed = AgentRegisterSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+    try {
+      const registration = agentRegistry.register(parsed.data);
+      notifyOwner(
+        notifier,
+        registration.ownerPhone,
+        `Agent-hub 🤖\nYour agent "${registration.name}" has been registered.\n` +
+          `Status: PENDING – awaiting approval before it can operate.\n` +
+          `Agent ID: ${registration.agentId.slice(0, 8)}…\n\n` +
+          `Reply "approve ${registration.name}" to activate it, or "help" for all commands.`,
+      );
+      res.status(201).json(registration);
+    } catch (err) {
+      res.status(409).json({ error: (err as Error).message });
+    }
+  });
+
+  /**
+   * GET /registry/agents
+   * List all registered agents (all statuses), with optional pagination.
+   * Query params: limit (default 100), offset (default 0)
+   */
+  router.get('/agents', (req: Request, res: Response) => {
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
+    const all = agentRegistry.list();
+    const page = paginate(all, limit, offset);
+    res.json({ agents: page.items, total: page.total, limit: page.limit, offset: page.offset });
+  });
+
+  /**
+   * GET /registry/agents/:agentId
+   * Retrieve a specific agent registration.
+   */
+  router.get('/agents/:agentId', (req: Request, res: Response) => {
+    const agent = agentRegistry.get(req.params.agentId);
+    if (!agent) {
+      res.status(404).json({ error: `Agent "${req.params.agentId}" not found.` });
+      return;
+    }
+    res.json(agent);
+  });
+
+  /**
+   * PATCH /registry/agents/:agentId
+   * Partially update a registered agent's mutable fields.
+   * Identity fields (agentId, apiKey, owner, contactEmail) and status/timestamps
+   * cannot be changed here; use approve/revoke for lifecycle transitions.
+   * Requires operator authentication when OPERATOR_API_KEY is set.
+   */
+  router.patch('/agents/:agentId', auth, (req: Request, res: Response) => {
+    const parsed = AgentUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+    try {
+      const agent = agentRegistry.update(req.params.agentId, parsed.data);
+      res.json(agent);
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
+    }
+  });
+
+  /**
+   * PATCH /registry/agents/:agentId/approve
+   * Approve a registered agent, granting it permission to operate.
+   * Requires operator authentication when OPERATOR_API_KEY is set.
+   */
+  router.patch('/agents/:agentId/approve', auth, (req: Request, res: Response) => {
+    try {
+      const agent = agentRegistry.approve(req.params.agentId);
+      notifyOwner(
+        notifier,
+        agent.ownerPhone,
+        `Agent-hub ✅\nYour agent "${agent.name}" has been APPROVED and can now operate.`,
+      );
+      res.json(agent);
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
+    }
+  });
+
+  /**
+   * PATCH /registry/agents/:agentId/revoke
+   * Revoke an agent, immediately blocking it from running any further tasks.
+   * Requires operator authentication when OPERATOR_API_KEY is set.
+   */
+  router.patch('/agents/:agentId/revoke', auth, (req: Request, res: Response) => {
+    try {
+      const agent = agentRegistry.revoke(req.params.agentId);
+      notifyOwner(
+        notifier,
+        agent.ownerPhone,
+        `Agent-hub 🚫\nYour agent "${agent.name}" has been REVOKED and can no longer operate.`,
+      );
+      res.json(agent);
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
+    }
+  });
+
+  // ──────────────────────────────────────────────── Site registration endpoints
+
+  /**
+   * POST /registry/sites
+   * Register a website as a consenting participant in the Agent-hub ecosystem.
+   * Returns the full registration including siteId and apiKey.
+   * Status starts as "pending"; an operator must PATCH …/approve to open the site to agents.
+   */
+  router.post('/sites', (req: Request, res: Response) => {
+    const parsed = SiteRegisterSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+    try {
+      const registration = siteRegistry.register(parsed.data);
+      res.status(201).json(registration);
+    } catch (err) {
+      res.status(409).json({ error: (err as Error).message });
+    }
+  });
+
+  /**
+   * GET /registry/sites
+   * List all registered sites, with optional pagination.
+   * Query params: limit (default 100), offset (default 0)
+   */
+  router.get('/sites', (req: Request, res: Response) => {
+    const { limit, offset } = parsePagination(req.query as Record<string, unknown>);
+    const all = siteRegistry.list();
+    const page = paginate(all, limit, offset);
+    res.json({ sites: page.items, total: page.total, limit: page.limit, offset: page.offset });
+  });
+
+  /**
+   * GET /registry/sites/:siteId
+   * Retrieve a specific site registration.
+   */
+  router.get('/sites/:siteId', (req: Request, res: Response) => {
+    const site = siteRegistry.get(req.params.siteId);
+    if (!site) {
+      res.status(404).json({ error: `Site "${req.params.siteId}" not found.` });
+      return;
+    }
+    res.json(site);
+  });
+
+  /**
+   * PATCH /registry/sites/:siteId/approve
+   * Approve a registered site, allowing agents to visit it.
+   * Requires operator authentication when OPERATOR_API_KEY is set.
+   */
+  router.patch('/sites/:siteId/approve', auth, (req: Request, res: Response) => {
+    try {
+      const site = siteRegistry.approve(req.params.siteId);
+      res.json(site);
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
+    }
+  });
+
+  /**
+   * PATCH /registry/sites/:siteId/revoke
+   * Revoke a site, immediately blocking agent access.
+   * Requires operator authentication when OPERATOR_API_KEY is set.
+   */
+  router.patch('/sites/:siteId/revoke', auth, (req: Request, res: Response) => {
+    try {
+      const site = siteRegistry.revoke(req.params.siteId);
+      res.json(site);
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
+    }
+  });
+
+  return router;
+}

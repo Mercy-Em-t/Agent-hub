@@ -1,0 +1,63 @@
+{
+  "project_metadata": {
+    "title": "The Room Breathes",
+    "version": "1.0.0",
+    "current_frame_target": 8,
+    "fps": 24,
+    "render_engine": "EEVEE_NEXT"
+  },
+  "global_logic": {
+    "mood_slider": 0.85,
+    "sentient_camera_enabled": true,
+    "asset_mode": "BLOCKOUT"
+  },
+  "scene_hierarchy": {
+    "environment": "Hallway + Sanctuary Room + Tree Branch Exterior",
+    "subjects": ["Girl_Blockout", "White_Bird_Silhouette"],
+    "props": ["Lived_In_Desk", "Diary_Object", "Sunlight_Plane"]
+  },
+  "shot_log": {
+    "FR01_04": {
+      "desc": "Approach and Window Entry",
+      "cam_type": "Handheld Drift"
+    },
+    "FR_GLIMPSE": {
+      "desc": "Bird Glimpse through Window Pane",
+      "cam_action": "Approach desk, looking past her shoulder",
+      "subject": "White_Bird_Silhouette",
+      "focus": "window_exterior_bird"
+    },
+    "FR05": {
+      "desc": "The Acknowledgment",
+      "cam_action": "U-Turn past shoulder",
+      "pivot_frame": 145,
+      "subject_action": "180-degree head turn to camera"
+    },
+    "FR06": {
+      "desc": "The Linger",
+      "cam_action": "Z-Axis Creep",
+      "focal_length": "35mm to 50mm transition",
+      "text_trigger": "Ink-drying shader sequence"
+    },
+    "FR07": {
+      "desc": "The Departure",
+      "cam_action": "Linear Dolly Out",
+      "start_pos": [0, -0.5, 1.7],
+      "end_pos": [0, -8.0, 1.7],
+      "lighting_logic": "Vignette via hallway doorway"
+    },
+    "FR08": {
+      "desc": "The Exterior Resolution",
+      "cam_action": "Linear tracking pull-back outside window",
+      "start_pos": [0.0, -12.0, 5.0],
+      "end_pos": [0.0, -15.0, 5.2],
+      "focus": "Branch_Empty",
+      "lighting_logic": "Warm window amber glow contrasting deep twilight indigo"
+    }
+  },
+  "audio_markers": {
+    "distant_choir": "Fade out begins FR 500",
+    "pen_scratching": "Reverb increase start FR 450",
+    "quiet_sigh": "Frame 180"
+  }
+}
