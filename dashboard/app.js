@@ -93,7 +93,11 @@ const el = {
     asciiFileName: document.getElementById('ascii-file-name'),
     asciiOutputPre: document.getElementById('ascii-output-pre'),
     
-    projectNotebookDiary: document.getElementById('project-notebook-diary')
+    projectNotebookDiary: document.getElementById('project-notebook-diary'),
+    
+    localStatusDot: document.getElementById('local-bridge-status-dot'),
+    localStatusTxt: document.getElementById('local-bridge-status-txt'),
+    btnRunBlender: document.getElementById('btn-run-blender')
 };
 
 // LIVE CODE GENERATOR
@@ -562,10 +566,102 @@ el.asciiUpload.addEventListener('change', (e) => {
     reader.readAsDataURL(file);
 });
 
-// Notebook keypress auto-save
-el.projectNotebookDiary.addEventListener('input', () => {
-    saveProject();
+// LOCAL DISK BRIDGE CLIENT LAYER
+let isBridgeConnected = false;
+
+async function checkLocalBridge() {
+    try {
+        const res = await fetch('http://localhost:5000/api/projects');
+        if (res.ok) {
+            isBridgeConnected = true;
+            el.localStatusDot.style.background = '#10b981';
+            el.localStatusTxt.textContent = 'LOCAL DISK BRIDGE CONNECTED';
+            el.btnRunBlender.style.background = 'rgba(16, 185, 129, 0.2)';
+            el.btnRunBlender.style.borderColor = '#10b981';
+            el.btnRunBlender.style.color = '#10b981';
+            el.btnRunBlender.disabled = false;
+        } else {
+            throw new Error();
+        }
+    } catch (err) {
+        isBridgeConnected = false;
+        el.localStatusDot.style.background = '#ef4444';
+        el.localStatusTxt.textContent = 'LOCAL DISK BRIDGE DISCONNECTED';
+        el.btnRunBlender.style.background = 'rgba(239, 68, 68, 0.05)';
+        el.btnRunBlender.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+        el.btnRunBlender.style.color = '#888';
+        el.btnRunBlender.disabled = true;
+    }
+}
+
+async function saveToLocalDisk() {
+    if (!isBridgeConnected) return;
+    const data = {
+        sceneDesc: el.sceneDesc.value,
+        asciiDiagram: el.asciiDiagram.value,
+        mathPlot: el.mathPlot.value,
+        notebookDiary: el.projectNotebookDiary.value
+    };
+    try {
+        await fetch('http://localhost:5000/api/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectName: state.activeProject,
+                state: data
+            })
+        });
+    } catch (e) {
+        console.error("Local disk save failed:", e);
+    }
+}
+
+// Intercept saveProject to auto-sync to local disk
+const originalSaveProject = saveProject;
+saveProject = function() {
+    originalSaveProject();
+    saveToLocalDisk();
+};
+
+el.btnRunBlender.addEventListener('click', async () => {
+    if (!isBridgeConnected) return;
+    
+    el.btnRunBlender.textContent = '⏳ RENDERING ON LOCAL GPU...';
+    el.btnRunBlender.style.background = 'rgba(253, 184, 19, 0.2)';
+    el.btnRunBlender.style.borderColor = '#fdb813';
+    el.btnRunBlender.style.color = '#fdb813';
+    
+    try {
+        const res = await fetch('http://localhost:5000/api/render', { method: 'POST' });
+        const data = await res.json();
+        
+        if (data.success) {
+            el.btnRunBlender.textContent = '✅ RENDER COMPLETED!';
+            el.btnRunBlender.style.background = 'rgba(16, 185, 129, 0.2)';
+            el.btnRunBlender.style.borderColor = '#10b981';
+            el.btnRunBlender.style.color = '#10b981';
+            
+            // Log terminal output to user's scripting bridge box for high interactivity!
+            el.codeBlock.textContent = data.stdout || "Scene compiled successfully inside Blender!";
+        } else {
+            throw new Error(data.error);
+        }
+    } catch (err) {
+        el.btnRunBlender.textContent = '❌ RENDER FAILED';
+        el.btnRunBlender.style.background = 'rgba(239, 68, 68, 0.2)';
+        el.btnRunBlender.style.borderColor = '#ef4444';
+        el.btnRunBlender.style.color = '#ef4444';
+    }
+    
+    setTimeout(() => {
+        el.btnRunBlender.textContent = '🚀 RUN BLENDER JOB (LOCAL GPU)';
+        checkLocalBridge();
+    }, 4000);
 });
+
+// Periodic ping check
+setInterval(checkLocalBridge, 5000);
+checkLocalBridge();
 
 // INITIALIZATION
 loadProject('the_room_breathes');
