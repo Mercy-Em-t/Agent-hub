@@ -47,6 +47,9 @@ const el = {
     
     viewport: document.getElementById('render-viewport'),
     viewportFrame: document.getElementById('viewport-frame-counter'),
+    tab3d: document.getElementById('tab-3d'),
+    tabCycles: document.getElementById('tab-cycles'),
+    camLensStats: document.getElementById('cam-lens-stats'),
     timelineSlider: document.getElementById('timeline-slider'),
     markers: document.querySelectorAll('.narrative-markers .marker'),
     
@@ -362,6 +365,32 @@ updateStateAndUI = function() {
     originalUpdateStateAndUI();
     saveProject();
 };
+
+el.tab3d.addEventListener('click', () => {
+    el.tab3d.style.background = 'rgba(16, 185, 129, 0.2)';
+    el.tab3d.style.borderColor = '#10b981';
+    el.tab3d.style.color = '#10b981';
+    
+    el.tabCycles.style.background = 'rgba(253, 184, 19, 0.05)';
+    el.tabCycles.style.borderColor = 'rgba(253, 184, 19, 0.2)';
+    el.tabCycles.style.color = '#888';
+    
+    el.viewport.style.backgroundImage = "url('blockout_view.png')";
+    el.camLensStats.textContent = "3D VIEWPORT // WIREFRAME GRID // 35mm";
+});
+
+el.tabCycles.addEventListener('click', () => {
+    el.tabCycles.style.background = 'rgba(253, 184, 19, 0.2)';
+    el.tabCycles.style.borderColor = '#fdb813';
+    el.tabCycles.style.color = '#fdb813';
+    
+    el.tab3d.style.background = 'rgba(16, 185, 129, 0.05)';
+    el.tab3d.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+    el.tab3d.style.color = '#888';
+    
+    el.viewport.style.backgroundImage = "url('rendered_view.png')";
+    el.camLensStats.textContent = "CAM_01 // 55mm // f/1.8 // CYCLES RENDER";
+});
 
 // INITIALIZATION
 loadProject('the_room_breathes');

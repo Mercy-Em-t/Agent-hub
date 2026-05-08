@@ -91,11 +91,16 @@
                     <span class="panel-status render-active">ACTIVE PRE-VIZ</span>
                 </div>
                 <div class="viewport-container">
-                    <div class="live-render" id="render-viewport">
+                    <!-- WORKSPACE TABS (GRID VS CYCLES RENDER) -->
+                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                        <button class="btn-toggle active" id="tab-3d" style="flex: 1; padding: 8px; font-weight: bold; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #10b981; border-radius: 4px; cursor: pointer; text-transform: uppercase;">👁️ Blender 3D Space (Grid)</button>
+                        <button class="btn-toggle" id="tab-cycles" style="flex: 1; padding: 8px; font-weight: bold; background: rgba(253, 184, 19, 0.05); border: 1px solid rgba(253, 184, 19, 0.2); color: #888; border-radius: 4px; cursor: pointer; text-transform: uppercase;">🎬 Cycles Volumetric Render</button>
+                    </div>
+                    <div class="live-render" id="render-viewport" style="background-image: url('blockout_view.png'); background-size: cover; background-position: center; transition: background-image 0.3s ease-in-out; height: 350px;">
                         <!-- We embed the pre-viz image or a beautiful placeholder with styling -->
                         <div class="glowing-lens-flare"></div>
                         <div class="render-overlay">
-                            <div class="cam-stats">CAM_01 // 55mm // f/1.8 // CYCLES</div>
+                            <div class="cam-stats" id="cam-lens-stats">3D VIEWPORT // WIREFRAME GRID // 35mm</div>
                             <div class="frame-counter" id="viewport-frame-counter">FRAME 000 // 200</div>
                         </div>
                     </div>
