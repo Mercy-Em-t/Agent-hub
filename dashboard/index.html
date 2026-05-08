@@ -90,37 +90,122 @@
                     <h2>LIVE VIEWPORT PREVIEW</h2>
                     <span class="panel-status render-active">ACTIVE PRE-VIZ</span>
                 </div>
-                <div class="viewport-container">
-                    <!-- WORKSPACE TABS (GRID VS CYCLES RENDER) -->
-                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-                        <button class="btn-toggle active" id="tab-3d" style="flex: 1; padding: 8px; font-weight: bold; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #10b981; border-radius: 4px; cursor: pointer; text-transform: uppercase;">👁️ Blender 3D Space (Grid)</button>
-                        <button class="btn-toggle" id="tab-cycles" style="flex: 1; padding: 8px; font-weight: bold; background: rgba(253, 184, 19, 0.05); border: 1px solid rgba(253, 184, 19, 0.2); color: #888; border-radius: 4px; cursor: pointer; text-transform: uppercase;">🎬 Cycles Volumetric Render</button>
+                <!-- SUITE TABS NAVIGATION -->
+                <div style="display: flex; gap: 4px; background: rgba(5, 8, 17, 0.6); padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.05); overflow-x: auto;">
+                    <button class="btn-toggle active" id="suite-tab-storyboard" style="padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 10px; text-transform: uppercase; white-space: nowrap;">🎬 Storyboards</button>
+                    <button class="btn-toggle" id="suite-tab-whiteboard" style="padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 10px; text-transform: uppercase; white-space: nowrap;">🎨 Sketch Whiteboard</button>
+                    <button class="btn-toggle" id="suite-tab-ascii" style="padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 10px; text-transform: uppercase; white-space: nowrap;">📸 Image To ASCII</button>
+                    <button class="btn-toggle" id="suite-tab-library" style="padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 10px; text-transform: uppercase; white-space: nowrap;">📦 Asset Library</button>
+                    <button class="btn-toggle" id="suite-tab-diary" style="padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 10px; text-transform: uppercase; white-space: nowrap;">📔 Project Diary</button>
+                </div>
+
+                <!-- 1. STORYBOARD & TIMELINE VIEW -->
+                <div id="suite-content-storyboard" style="display: flex; flex-direction: column; width: 100%;">
+                    <div class="viewport-container" style="padding: 15px;">
+                        <!-- WORKSPACE TABS (GRID VS CYCLES RENDER) -->
+                        <div style="display: flex; gap: 8px; margin-bottom: 10px; width: 100%;">
+                            <button class="btn-toggle active" id="tab-3d" style="flex: 1; padding: 6px 10px; font-weight: bold; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #10b981; border-radius: 4px; cursor: pointer; text-transform: uppercase; font-size: 10px;">👁️ Blender 3D Space (Grid)</button>
+                            <button class="btn-toggle" id="tab-cycles" style="flex: 1; padding: 6px 10px; font-weight: bold; background: rgba(253, 184, 19, 0.05); border: 1px solid rgba(253, 184, 19, 0.2); color: #888; border-radius: 4px; cursor: pointer; text-transform: uppercase; font-size: 10px;">🎬 Cycles Volumetric Render</button>
+                        </div>
+                        <div class="live-render" id="render-viewport" style="background-image: url('blockout_view.png'); background-size: cover; background-position: center; transition: background-image 0.3s ease-in-out; height: 350px; width: 100%;">
+                            <div class="glowing-lens-flare"></div>
+                            <div class="render-overlay">
+                                <div class="cam-stats" id="cam-lens-stats">3D VIEWPORT // WIREFRAME GRID // 35mm</div>
+                                <div class="frame-counter" id="viewport-frame-counter">FRAME 000 // 200</div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="live-render" id="render-viewport" style="background-image: url('blockout_view.png'); background-size: cover; background-position: center; transition: background-image 0.3s ease-in-out; height: 350px;">
-                        <!-- We embed the pre-viz image or a beautiful placeholder with styling -->
-                        <div class="glowing-lens-flare"></div>
-                        <div class="render-overlay">
-                            <div class="cam-stats" id="cam-lens-stats">3D VIEWPORT // WIREFRAME GRID // 35mm</div>
-                            <div class="frame-counter" id="viewport-frame-counter">FRAME 000 // 200</div>
+
+                    <!-- NARRATIVE TIMELINE -->
+                    <div class="timeline-container" style="padding: 15px;">
+                        <div class="timeline-controls">
+                            <button class="btn btn-play" id="btn-play">▶ PLAY</button>
+                            <button class="btn btn-pause" id="btn-pause">❚❚ PAUSE</button>
+                        </div>
+                        <div class="timeline-slider-wrapper">
+                            <input type="range" id="timeline-slider" min="0" max="200" value="0">
+                            <div class="narrative-markers">
+                                <span class="marker active" style="left: 0%;" data-frame="0">Start Drift</span>
+                                <span class="marker" style="left: 30%;" data-frame="60">Shoulder Pivot</span>
+                                <span class="marker" style="left: 60%;" data-frame="120">Unfinished Pause</span>
+                                <span class="marker" style="left: 70%;" data-frame="140">◉ Gaze Lock</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- NARRATIVE TIMELINE -->
-                <div class="timeline-container">
-                    <div class="timeline-controls">
-                        <button class="btn btn-play" id="btn-play">▶ PLAY</button>
-                        <button class="btn btn-pause" id="btn-pause">❚❚ PAUSE</button>
-                    </div>
-                    <div class="timeline-slider-wrapper">
-                        <input type="range" id="timeline-slider" min="0" max="200" value="0">
-                        <div class="narrative-markers">
-                            <span class="marker active" style="left: 0%;" data-frame="0">Start Drift</span>
-                            <span class="marker" style="left: 30%;" data-frame="60">Shoulder Pivot</span>
-                            <span class="marker" style="left: 60%;" data-frame="120">Unfinished Pause</span>
-                            <span class="marker" style="left: 70%;" data-frame="140">◉ Gaze Lock</span>
+                <!-- 2. SKETCH WHITEBOARD VIEW -->
+                <div id="suite-content-whiteboard" style="display: none; padding: 20px; flex-direction: column; gap: 15px; width: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="font-size: 0.85rem; color: #94a3b8; font-weight: bold; text-transform: uppercase;">🎨 Dynamic 2D Scene & Camera Sketchboard</h3>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-toggle active" id="whiteboard-draw-btn" style="padding: 4px 8px; font-size: 10px;">✎ DRAW</button>
+                            <button class="btn-toggle" id="whiteboard-erase-btn" style="padding: 4px 8px; font-size: 10px;">⌫ ERASE</button>
+                            <button class="btn btn-copy" id="whiteboard-clear-btn" style="padding: 4px 8px; font-size: 10px; border-color: rgba(239, 68, 68, 0.3); color: #ef4444;">CLEAR</button>
                         </div>
                     </div>
+                    <canvas id="whiteboard-canvas" width="600" height="320" style="background: #03050b; border: 1px solid rgba(253, 184, 19, 0.2); border-radius: 8px; cursor: crosshair; width: 100%; aspect-ratio: 16/9;"></canvas>
+                    <span style="font-size: 10px; color: #64748b; text-align: center;">Sketch your camera path vectors, desk bounds, and character placements directly onto the whiteboard space.</span>
+                </div>
+
+                <!-- 3. IMAGE TO ASCII CONVERTER VIEW -->
+                <div id="suite-content-ascii" style="display: none; padding: 20px; flex-direction: column; gap: 15px; width: 100%;">
+                    <h3 style="font-size: 0.85rem; color: #94a3b8; font-weight: bold; text-transform: uppercase;">📸 Sketch-To-ASCII Spatial Grid Converter</h3>
+                    <div style="display: flex; gap: 10px; align-items: center; background: rgba(5,8,17,0.4); padding: 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                        <input type="file" id="ascii-upload" accept="image/*" style="display: none;">
+                        <button class="btn" onclick="document.getElementById('ascii-upload').click()" style="font-size: 11px;">📂 SELECT SKETCH / DIAGRAM IMAGE</button>
+                        <span id="ascii-file-name" style="font-size: 11px; color: #64748b;">No sketch uploaded yet...</span>
+                    </div>
+                    <div style="background: #03050b; border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 15px; overflow: auto; max-height: 280px;">
+                        <pre id="ascii-output-pre" style="font-family: 'Courier New', monospace; font-size: 8px; line-height: 1.0; color: #10b981; white-space: pre; margin: 0; text-align: center;">Paste an image or draw on the whiteboard to generate high-contrast ASCII art diagrams!</pre>
+                    </div>
+                </div>
+
+                <!-- 4. ASSET LIBRARY VIEW -->
+                <div id="suite-content-library" style="display: none; padding: 20px; flex-direction: column; gap: 15px; overflow-y: auto; max-height: 480px; width: 100%;">
+                    <h3 style="font-size: 0.85rem; color: #94a3b8; font-weight: bold; text-transform: uppercase;">📦 Mesh Primitive Asset Library</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <!-- Cube card -->
+                        <div style="background: rgba(5, 8, 17, 0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                            <div style="font-weight: bold; font-size: 12px; color: #fdb813; margin-bottom: 6px;">■ Primitive Cube (Desk/Shelf)</div>
+                            <pre style="font-family: monospace; font-size: 9px; color: #cbd5e1; background: #03050b; padding: 6px; border-radius: 4px;">bpy.ops.mesh.primitive_cube_add(
+  size=1.0, 
+  location=(0.0, 2.0, 0.0), 
+  scale=(1.2, 0.8, 0.75)
+)</pre>
+                        </div>
+                        <!-- Cylinder card -->
+                        <div style="background: rgba(5, 8, 17, 0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                            <div style="font-weight: bold; font-size: 12px; color: #10b981; margin-bottom: 6px;">⬡ Cylinder (Character Stand-In)</div>
+                            <pre style="font-family: monospace; font-size: 9px; color: #cbd5e1; background: #03050b; padding: 6px; border-radius: 4px;">bpy.ops.mesh.primitive_cylinder_add(
+  radius=0.25, 
+  depth=1.4, 
+  location=(0.0, 2.0, 0.8)
+)</pre>
+                        </div>
+                        <!-- Sphere card -->
+                        <div style="background: rgba(5, 8, 17, 0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                            <div style="font-weight: bold; font-size: 12px; color: #3b82f6; margin-bottom: 6px;">◉ UV Sphere (Character Head)</div>
+                            <pre style="font-family: monospace; font-size: 9px; color: #cbd5e1; background: #03050b; padding: 6px; border-radius: 4px;">bpy.ops.mesh.primitive_uv_sphere_add(
+  radius=0.2, 
+  location=(0.0, 2.0, 1.6)
+)</pre>
+                        </div>
+                        <!-- Camera card -->
+                        <div style="background: rgba(5, 8, 17, 0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                            <div style="font-weight: bold; font-size: 12px; color: #ef4444; margin-bottom: 6px;">📹 Sentient Camera Rig</div>
+                            <pre style="font-family: monospace; font-size: 9px; color: #cbd5e1; background: #03050b; padding: 6px; border-radius: 4px;">cam_data = bpy.data.cameras.new(...)
+cam_obj = bpy.data.objects.new(...)
+scene.camera = cam_obj</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. PROJECT DIARY & NOTEBOOK VIEW -->
+                <div id="suite-content-diary" style="display: none; padding: 20px; flex-direction: column; gap: 15px; width: 100%;">
+                    <h3 style="font-size: 0.85rem; color: #94a3b8; font-weight: bold; text-transform: uppercase;">📔 Studio Project Notebook & Creative Diary</h3>
+                    <textarea id="project-notebook-diary" style="height: 250px; background: rgba(5, 8, 17, 0.7); border: 1px solid rgba(253, 184, 19, 0.3); color: #fff; padding: 15px; border-radius: 8px; font-family: 'Georgia', serif; font-size: 14px; line-height: 1.8; width: 100%; box-sizing: border-box; resize: vertical;" placeholder="Write down your director thoughts, narrative lines, or creative feedback here. Everything auto-saves to your isolated project!"></textarea>
+                    <span style="font-size: 10px; color: #64748b; text-align: center;">This notebook is isolated and auto-saves individually per active project.</span>
                 </div>
             </section>
 

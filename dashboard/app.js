@@ -67,7 +67,30 @@ const el = {
     swellTxt: document.querySelector('.swell-txt'),
     
     codeBlock: document.getElementById('python-code-block'),
-    btnCopy: document.getElementById('btn-copy')
+    btnCopy: document.getElementById('btn-copy'),
+    
+    suiteTabStoryboard: document.getElementById('suite-tab-storyboard'),
+    suiteTabWhiteboard: document.getElementById('suite-tab-whiteboard'),
+    suiteTabAscii: document.getElementById('suite-tab-ascii'),
+    suiteTabLibrary: document.getElementById('suite-tab-library'),
+    suiteTabDiary: document.getElementById('suite-tab-diary'),
+    
+    suiteContentStoryboard: document.getElementById('suite-content-storyboard'),
+    suiteContentWhiteboard: document.getElementById('suite-content-whiteboard'),
+    suiteContentAscii: document.getElementById('suite-content-ascii'),
+    suiteContentLibrary: document.getElementById('suite-content-library'),
+    suiteContentDiary: document.getElementById('suite-content-diary'),
+    
+    whiteboardCanvas: document.getElementById('whiteboard-canvas'),
+    whiteboardDrawBtn: document.getElementById('whiteboard-draw-btn'),
+    whiteboardEraseBtn: document.getElementById('whiteboard-erase-btn'),
+    whiteboardClearBtn: document.getElementById('whiteboard-clear-btn'),
+    
+    asciiUpload: document.getElementById('ascii-upload'),
+    asciiFileName: document.getElementById('ascii-file-name'),
+    asciiOutputPre: document.getElementById('ascii-output-pre'),
+    
+    projectNotebookDiary: document.getElementById('project-notebook-diary')
 };
 
 // LIVE CODE GENERATOR
@@ -336,7 +359,8 @@ function saveProject() {
     const data = {
         sceneDesc: el.sceneDesc.value,
         asciiDiagram: el.asciiDiagram.value,
-        mathPlot: el.mathPlot.value
+        mathPlot: el.mathPlot.value,
+        notebookDiary: el.projectNotebookDiary.value
     };
     localStorage.setItem(`project_state_${state.activeProject}`, JSON.stringify(data));
 }
@@ -346,11 +370,13 @@ function loadProject(projKey) {
     el.projectSelector.value = projKey;
     
     const saved = localStorage.getItem(`project_state_${projKey}`);
-    const data = saved ? JSON.parse(saved) : projectPresets[projKey];
+    const defaultData = projectPresets[projKey] || { sceneDesc: "", asciiDiagram: "", mathPlot: "" };
+    const data = saved ? JSON.parse(saved) : defaultData;
     
-    el.sceneDesc.value = data.sceneDesc;
-    el.asciiDiagram.value = data.asciiDiagram;
-    el.mathPlot.value = data.mathPlot;
+    el.sceneDesc.value = data.sceneDesc || "";
+    el.asciiDiagram.value = data.asciiDiagram || "";
+    el.mathPlot.value = data.mathPlot || "";
+    el.projectNotebookDiary.value = data.notebookDiary || `Dear Diary,\nToday we are developing our visual pre-viz for the ${projKey} short film...\n`;
     
     updateStateAndUI();
 }
@@ -390,6 +416,152 @@ el.tabCycles.addEventListener('click', () => {
     
     el.viewport.style.backgroundImage = "url('rendered_view.png')";
     el.camLensStats.textContent = "CAM_01 // 55mm // f/1.8 // CYCLES RENDER";
+});
+
+// CREATIVE SUITE NAVIGATION TABS
+const suiteTabs = [
+    { btn: el.suiteTabStoryboard, content: el.suiteContentStoryboard },
+    { btn: el.suiteTabWhiteboard, content: el.suiteContentWhiteboard },
+    { btn: el.suiteTabAscii, content: el.suiteContentAscii },
+    { btn: el.suiteTabLibrary, content: el.suiteContentLibrary },
+    { btn: el.suiteTabDiary, content: el.suiteContentDiary }
+];
+
+suiteTabs.forEach(tab => {
+    tab.btn.addEventListener('click', () => {
+        suiteTabs.forEach(t => {
+            t.btn.classList.remove('active');
+            t.content.style.display = 'none';
+        });
+        tab.btn.classList.add('active');
+        tab.content.style.display = 'flex';
+        
+        // Initialize whiteboard canvas background if shown
+        if (tab.btn === el.suiteTabWhiteboard) {
+            initWhiteboard();
+        }
+    });
+});
+
+// DRAWING WHITEBOARD CANVAS LOGIC
+let isDrawing = false;
+let drawMode = 'draw'; // 'draw' or 'erase'
+const ctx = el.whiteboardCanvas.getContext('2d');
+
+function initWhiteboard() {
+    const imgData = ctx.getImageData(0, 0, el.whiteboardCanvas.width, el.whiteboardCanvas.height);
+    let allTransparent = true;
+    for (let i = 0; i < imgData.data.length; i += 4) {
+        if (imgData.data[i+3] !== 0) {
+            allTransparent = false;
+            break;
+        }
+    }
+    if (allTransparent) {
+        ctx.fillStyle = '#03050b';
+        ctx.fillRect(0, 0, el.whiteboardCanvas.width, el.whiteboardCanvas.height);
+    }
+}
+
+el.whiteboardCanvas.addEventListener('mousedown', (e) => {
+    isDrawing = true;
+    ctx.beginPath();
+    const rect = el.whiteboardCanvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (el.whiteboardCanvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (el.whiteboardCanvas.height / rect.height);
+    ctx.moveTo(x, y);
+});
+
+el.whiteboardCanvas.addEventListener('mousemove', (e) => {
+    if (!isDrawing) return;
+    const rect = el.whiteboardCanvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (el.whiteboardCanvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (el.whiteboardCanvas.height / rect.height);
+    
+    ctx.lineWidth = drawMode === 'draw' ? 3 : 24;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = drawMode === 'draw' ? '#10b981' : '#03050b';
+    
+    ctx.lineTo(x, y);
+    ctx.stroke();
+});
+
+el.whiteboardCanvas.addEventListener('mouseup', () => { isDrawing = false; });
+el.whiteboardCanvas.addEventListener('mouseleave', () => { isDrawing = false; });
+
+el.whiteboardDrawBtn.addEventListener('click', () => {
+    drawMode = 'draw';
+    el.whiteboardDrawBtn.classList.add('active');
+    el.whiteboardEraseBtn.classList.remove('active');
+});
+
+el.whiteboardEraseBtn.addEventListener('click', () => {
+    drawMode = 'erase';
+    el.whiteboardEraseBtn.classList.add('active');
+    el.whiteboardDrawBtn.classList.remove('active');
+});
+
+el.whiteboardClearBtn.addEventListener('click', () => {
+    ctx.fillStyle = '#03050b';
+    ctx.fillRect(0, 0, el.whiteboardCanvas.width, el.whiteboardCanvas.height);
+});
+
+// SKETCH-TO-ASCII CONVERTER LOGIC
+el.asciiUpload.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    el.asciiFileName.textContent = file.name;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+            const tempCanvas = document.createElement('canvas');
+            const maxW = 60;
+            const maxH = 25;
+            let w = img.width;
+            let h = img.height;
+            
+            if (w > maxW) {
+                h = Math.floor(h * (maxW / w));
+                w = maxW;
+            }
+            if (h > maxH) {
+                w = Math.floor(w * (maxH / h));
+                h = maxH;
+            }
+            
+            tempCanvas.width = w;
+            tempCanvas.height = h;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(img, 0, 0, w, h);
+            
+            const pixels = tempCtx.getImageData(0, 0, w, h);
+            const chars = '@#S+*;:,. ';
+            let asciiStr = '';
+            
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    const idx = (y * w + x) * 4;
+                    const r = pixels.data[idx];
+                    const g = pixels.data[idx+1];
+                    const b = pixels.data[idx+2];
+                    const brightness = (0.2126 * r + 0.7152 * g + 0.0722 * b);
+                    const charIdx = Math.floor((brightness / 255) * (chars.length - 1));
+                    asciiStr += chars[charIdx];
+                }
+                asciiStr += '\n';
+            }
+            el.asciiOutputPre.textContent = asciiStr;
+        };
+        img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+});
+
+// Notebook keypress auto-save
+el.projectNotebookDiary.addEventListener('input', () => {
+    saveProject();
 });
 
 // INITIALIZATION
