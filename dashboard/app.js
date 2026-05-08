@@ -97,7 +97,20 @@ const el = {
     
     localStatusDot: document.getElementById('local-bridge-status-dot'),
     localStatusTxt: document.getElementById('local-bridge-status-txt'),
-    btnRunBlender: document.getElementById('btn-run-blender')
+    btnRunBlender: document.getElementById('btn-run-blender'),
+    
+    constructorType: document.getElementById('constructor-type'),
+    constructorName: document.getElementById('constructor-name'),
+    constructorX: document.getElementById('constructor-x'),
+    constructorY: document.getElementById('constructor-y'),
+    constructorZ: document.getElementById('constructor-z'),
+    constructorScaleX: document.getElementById('constructor-scale-x'),
+    constructorScaleY: document.getElementById('constructor-scale-y'),
+    constructorScaleZ: document.getElementById('constructor-scale-z'),
+    constructorMaterial: document.getElementById('constructor-material'),
+    btnConstructorAdd: document.getElementById('btn-constructor-add'),
+    btnConstructorDelete: document.getElementById('btn-constructor-delete'),
+    constructorObjectsList: document.getElementById('constructor-objects-list')
 };
 
 // LIVE CODE GENERATOR
@@ -132,15 +145,37 @@ def build_scene():
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete(use_global=False)
     
-    # 3D Writing Desk (Oak)
-    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.0, 2.0, 0.0), scale=(1.2, 0.8, 0.75))
-    desk = bpy.context.active_object
-    desk.name = "WritingDesk_Oak"
-    
-    # Character mesh (Cylinder stand-in)
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=1.4, location=(0.0, 2.0, 0.8))
-    character = bpy.context.active_object
-    character.name = "Character_Girl"
+${activeObjects.map(obj => {
+    let s = "";
+    if (obj.type === "cube") {
+        s += `    # Add Cube Primitive: ${obj.name}\n`;
+        s += `    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(${obj.x}, ${obj.y}, ${obj.z}), scale=(${obj.sx}, ${obj.sy}, ${obj.sz}))\n`;
+        s += `    mesh_${obj.name} = bpy.context.active_object\n`;
+        s += `    mesh_${obj.name}.name = "${obj.name}"`;
+    } else if (obj.type === "cylinder") {
+        s += `    # Add Cylinder Primitive: ${obj.name}\n`;
+        s += `    bpy.ops.mesh.primitive_cylinder_add(radius=${obj.sx}, depth=${obj.sz}, location=(${obj.x}, ${obj.y}, ${obj.z}))\n`;
+        s += `    mesh_${obj.name} = bpy.context.active_object\n`;
+        s += `    mesh_${obj.name}.name = "${obj.name}"`;
+    } else if (obj.type === "sphere") {
+        s += `    # Add UV Sphere Primitive: ${obj.name}\n`;
+        s += `    bpy.ops.mesh.primitive_uv_sphere_add(radius=${obj.sx}, location=(${obj.x}, ${obj.y}, ${obj.z}))\n`;
+        s += `    mesh_${obj.name} = bpy.context.active_object\n`;
+        s += `    mesh_${obj.name}.name = "${obj.name}"`;
+    } else if (obj.type === "spotlight") {
+        s += `    # Add Volumetric Spotlight: ${obj.name}\n`;
+        s += `    light_data = bpy.data.lights.new(name="${obj.name}_Data", type='SPOT')\n`;
+        s += `    light_obj = bpy.data.objects.new(name="${obj.name}", object_data=light_data)\n`;
+        s += `    bpy.context.collection.objects.link(light_obj)\n`;
+        s += `    light_obj.location = (${obj.x}, ${obj.y}, ${obj.z})`;
+    }
+    if (obj.mat && obj.type !== "spotlight") {
+        s += `\n    mat_${obj.name} = bpy.data.materials.new(name="${obj.mat}")\n`;
+        s += `    mat_${obj.name}.use_nodes = True\n`;
+        s += `    mesh_${obj.name}.data.materials.append(mat_${obj.name})`;
+    }
+    return s;
+}).join('\n\n')}
 
 def setup_lighting():
     # Volumetric spotlight
@@ -658,6 +693,87 @@ el.btnRunBlender.addEventListener('click', async () => {
         checkLocalBridge();
     }, 4000);
 });
+// INTERACTIVE SCENE CONSTRUCTOR STATE & LOGIC
+let activeObjects = [
+    { name: "WritingDesk_Oak", type: "cube", x: 0.0, y: 2.0, z: 0.0, sx: 1.2, sy: 0.8, sz: 0.75, mat: "Rustic_Wood" },
+    { name: "Character_Girl", type: "cylinder", x: 0.0, y: 2.0, z: 0.8, sx: 0.25, sy: 0.25, sz: 1.4, mat: "Emerald_Glow" }
+];
+
+function renderObjectsList() {
+    el.constructorObjectsList.innerHTML = "";
+    
+    activeObjects.forEach((obj, idx) => {
+        const card = document.createElement('div');
+        card.style.background = 'rgba(5, 8, 17, 0.6)';
+        card.style.padding = '8px 12px';
+        card.style.borderRadius = '6px';
+        card.style.border = '1px solid rgba(255,255,255,0.05)';
+        card.style.display = 'flex';
+        card.style.justifyContent = 'space-between';
+        card.style.alignItems = 'center';
+        card.style.gap = '10px';
+        
+        const info = document.createElement('div');
+        info.innerHTML = `
+            <div style="font-weight: bold; font-size: 11px; color: #fdb813;">${obj.name} (${obj.type.toUpperCase()})</div>
+            <div style="font-size: 9px; color: #888;">Pos: (${obj.x}, ${obj.y}, ${obj.z}) | Scale: (${obj.sx}, ${obj.sy}, ${obj.sz})</div>
+            <div style="font-size: 9px; color: #10b981;">Mat: ${obj.mat.replace('_', ' ')}</div>
+        `;
+        
+        const delBtn = document.createElement('button');
+        delBtn.textContent = "❌";
+        delBtn.style.background = "none";
+        delBtn.style.border = "none";
+        delBtn.style.cursor = "pointer";
+        delBtn.style.fontSize = "10px";
+        delBtn.addEventListener('click', () => {
+            activeObjects.splice(idx, 1);
+            renderObjectsList();
+            updateStateAndUI();
+        });
+        
+        card.appendChild(info);
+        card.appendChild(delBtn);
+        el.constructorObjectsList.appendChild(card);
+    });
+}
+
+el.btnConstructorAdd.addEventListener('click', () => {
+    const name = el.constructorName.value.trim() || "CustomMesh";
+    const type = el.constructorType.value;
+    const x = parseFloat(el.constructorX.value) || 0.0;
+    const y = parseFloat(el.constructorY.value) || 0.0;
+    const z = parseFloat(el.constructorZ.value) || 0.0;
+    const sx = parseFloat(el.constructorScaleX.value) || 1.0;
+    const sy = parseFloat(el.constructorScaleY.value) || 1.0;
+    const sz = parseFloat(el.constructorScaleZ.value) || 1.0;
+    const mat = el.constructorMaterial.value;
+    
+    // Avoid duplicates
+    if (activeObjects.some(obj => obj.name === name)) {
+        alert("An object with this name already exists!");
+        return;
+    }
+    
+    activeObjects.push({ name, type, x, y, z, sx, sy, sz, mat });
+    renderObjectsList();
+    updateStateAndUI();
+});
+
+el.btnConstructorDelete.addEventListener('click', () => {
+    const name = el.constructorName.value.trim();
+    const idx = activeObjects.findIndex(obj => obj.name === name);
+    if (idx !== -1) {
+        activeObjects.splice(idx, 1);
+        renderObjectsList();
+        updateStateAndUI();
+    } else {
+        alert("Object not found!");
+    }
+});
+
+// Invoke initial render
+renderObjectsList();
 
 // Periodic ping check
 setInterval(checkLocalBridge, 5000);

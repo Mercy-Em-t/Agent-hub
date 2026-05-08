@@ -163,43 +163,74 @@
                     </div>
                 </div>
 
-                <!-- 4. ASSET LIBRARY VIEW -->
-                <div id="suite-content-library" style="display: none; padding: 20px; flex-direction: column; gap: 15px; overflow-y: auto; max-height: 480px; width: 100%;">
-                    <h3 style="font-size: 0.85rem; color: #94a3b8; font-weight: bold; text-transform: uppercase;">📦 Mesh Primitive Asset Library</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                        <!-- Cube card -->
-                        <div style="background: rgba(5, 8, 17, 0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                            <div style="font-weight: bold; font-size: 12px; color: #fdb813; margin-bottom: 6px;">■ Primitive Cube (Desk/Shelf)</div>
-                            <pre style="font-family: monospace; font-size: 9px; color: #cbd5e1; background: #03050b; padding: 6px; border-radius: 4px;">bpy.ops.mesh.primitive_cube_add(
-  size=1.0, 
-  location=(0.0, 2.0, 0.0), 
-  scale=(1.2, 0.8, 0.75)
-)</pre>
+                <!-- 4. ASSET LIBRARY & SCENE CONSTRUCTOR -->
+                <div id="suite-content-library" style="display: none; padding: 20px; flex-direction: column; gap: 15px; width: 100%;">
+                    <h3 style="font-size: 0.85rem; color: #94a3b8; font-weight: bold; text-transform: uppercase;">🛠️ 3D Scene Constructor & Custom Object Editor</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        
+                        <!-- LEFT PANEL: THE CONSTRUCTOR FORM -->
+                        <div style="background: rgba(5, 8, 17, 0.5); padding: 15px; border-radius: 8px; border: 1px solid rgba(253, 184, 19, 0.2); display: flex; flex-direction: column; gap: 12px;">
+                            <h4 style="font-size: 11px; color: #fdb813; font-weight: bold; text-transform: uppercase; margin: 0 0 5px 0;">➕ Create New Object</h4>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <label style="font-size: 9px; color: #888;">OBJECT TYPE</label>
+                                    <select id="constructor-type" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px;">
+                                        <option value="cube">■ Primitive Cube</option>
+                                        <option value="cylinder">⬡ Primitive Cylinder</option>
+                                        <option value="sphere">◉ UV Sphere</option>
+                                        <option value="spotlight">💡 Volumetric Spotlight</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <label style="font-size: 9px; color: #888;">OBJECT NAME</label>
+                                    <input type="text" id="constructor-name" value="CustomMesh" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px;">
+                                </div>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <label style="font-size: 9px; color: #888;">LOCATION COORDINATES (X, Y, Z)</label>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                                    <input type="number" step="0.1" id="constructor-x" value="0.0" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; text-align: center;">
+                                    <input type="number" step="0.1" id="constructor-y" value="2.0" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; text-align: center;">
+                                    <input type="number" step="0.1" id="constructor-z" value="1.0" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; text-align: center;">
+                                </div>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <label style="font-size: 9px; color: #888;">SCALE / RADIUS (Width, Depth, Height)</label>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                                    <input type="number" step="0.1" id="constructor-scale-x" value="1.0" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; text-align: center;">
+                                    <input type="number" step="0.1" id="constructor-scale-y" value="1.0" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; text-align: center;">
+                                    <input type="number" step="0.1" id="constructor-scale-z" value="1.0" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; text-align: center;">
+                                </div>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <label style="font-size: 9px; color: #888;">SURFACE MATERIAL CHARACTERISTIC</label>
+                                <select id="constructor-material" style="background: #03050b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px;">
+                                    <option value="Gold_Glow">🌟 Glowing Golden (Emission)</option>
+                                    <option value="Emerald_Glow">💚 Emerald Green (Luminous)</option>
+                                    <option value="Cosmic_Silver">🛸 Cosmic Metallic (Reflective)</option>
+                                    <option value="Rustic_Wood">🪵 Oak Timber (Matte)</option>
+                                    <option value="Velvet_Red">🩸 Velvet Crimson (Deep Gloss)</option>
+                                </select>
+                            </div>
+
+                            <div style="display: flex; gap: 10px; margin-top: 5px;">
+                                <button class="btn" id="btn-constructor-add" style="flex: 1; font-size: 10px; background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #10b981; font-weight: bold;">➕ ADD OBJECT</button>
+                                <button class="btn" id="btn-constructor-delete" style="flex: 1; font-size: 10px; background: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #ef4444; font-weight: bold;">❌ REMOVE OBJECT</button>
+                            </div>
                         </div>
-                        <!-- Cylinder card -->
-                        <div style="background: rgba(5, 8, 17, 0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                            <div style="font-weight: bold; font-size: 12px; color: #10b981; margin-bottom: 6px;">⬡ Cylinder (Character Stand-In)</div>
-                            <pre style="font-family: monospace; font-size: 9px; color: #cbd5e1; background: #03050b; padding: 6px; border-radius: 4px;">bpy.ops.mesh.primitive_cylinder_add(
-  radius=0.25, 
-  depth=1.4, 
-  location=(0.0, 2.0, 0.8)
-)</pre>
+
+                        <!-- RIGHT PANEL: ACTIVE OBJECTS TABLE -->
+                        <div style="background: rgba(5, 8, 17, 0.4); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 10px;">
+                            <h4 style="font-size: 11px; color: #94a3b8; font-weight: bold; text-transform: uppercase; margin: 0;">📦 Active Scene Objects</h4>
+                            <div style="overflow-y: auto; max-height: 250px; display: flex; flex-direction: column; gap: 8px;" id="constructor-objects-list">
+                                <!-- Dynamic active objects will appear here -->
+                            </div>
                         </div>
-                        <!-- Sphere card -->
-                        <div style="background: rgba(5, 8, 17, 0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                            <div style="font-weight: bold; font-size: 12px; color: #3b82f6; margin-bottom: 6px;">◉ UV Sphere (Character Head)</div>
-                            <pre style="font-family: monospace; font-size: 9px; color: #cbd5e1; background: #03050b; padding: 6px; border-radius: 4px;">bpy.ops.mesh.primitive_uv_sphere_add(
-  radius=0.2, 
-  location=(0.0, 2.0, 1.6)
-)</pre>
-                        </div>
-                        <!-- Camera card -->
-                        <div style="background: rgba(5, 8, 17, 0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                            <div style="font-weight: bold; font-size: 12px; color: #ef4444; margin-bottom: 6px;">📹 Sentient Camera Rig</div>
-                            <pre style="font-family: monospace; font-size: 9px; color: #cbd5e1; background: #03050b; padding: 6px; border-radius: 4px;">cam_data = bpy.data.cameras.new(...)
-cam_obj = bpy.data.objects.new(...)
-scene.camera = cam_obj</pre>
-                        </div>
+                        
                     </div>
                 </div>
 
