@@ -136,21 +136,21 @@ class BlenderPreVizCompiler:
             bpy.context.collection.objects.link(cam_obj)
             bpy.context.scene.camera = cam_obj
             
-            # Animate Camera Trajectory (U-Turn Keyframes)
-            # Frame 0: Start of Panning
-            cam_obj.location = (0.0, -6.0, 2.0)
+            # Animate Camera Trajectory (Side-Profile Close-up Keyframes)
+            # Frame 1: Start in front of her
+            cam_obj.location = (0.0, -1.5, 1.5)
             cam_obj.keyframe_insert(data_path="location", frame=1)
             
-            # Frame 60: Drift Past Shoulder
-            cam_obj.location = (0.0, -3.0, 1.6)
-            cam_obj.keyframe_insert(data_path="location", frame=60)
+            # Frame 80: Glide around to her right-hand side
+            cam_obj.location = (-1.2, 1.0, 1.5)
+            cam_obj.keyframe_insert(data_path="location", frame=80)
             
-            # Frame 140: Pivot to face her (The U-Turn complete)
-            cam_obj.location = (0.5, 2.0, 1.4)
+            # Frame 140: Arrive at side profile
+            cam_obj.location = (-0.9, 2.0, 1.5)
             cam_obj.keyframe_insert(data_path="location", frame=140)
 
-            # Frame 200: Gaze lock holding position
-            cam_obj.location = (0.2, -0.5, 1.7)
+            # Frame 200: Ultra-close macro shot of her ear
+            cam_obj.location = (-0.45, 2.0, 1.52)
             cam_obj.keyframe_insert(data_path="location", frame=200)
             
             # Add Gaze Track constraint to lock her face to the camera
@@ -159,13 +159,13 @@ class BlenderPreVizCompiler:
             constraint.track_axis = 'TRACK_NEGATIVE_Z'
             constraint.up_axis = 'UP_Y'
             
-            self.log("Cinematic camera keyframes and Track-To gaze constraints bound successfully.")
+            self.log("Cinematic side-profile camera keyframes and Track-To gaze constraints bound successfully.")
         else:
-            self.log("[MOCK camera] Created camera object 'SentientCamera' at (0.0, -6.0, 2.0).")
-            self.log("[MOCK camera] Keyframe Frame 1: Location = (0.0, -6.0, 2.0) [Panning Start].")
-            self.log("[MOCK camera] Keyframe Frame 60: Location = (0.0, -3.0, 1.6) [Drift Past Shoulder].")
-            self.log("[MOCK camera] Keyframe Frame 140: Location = (0.5, 2.0, 1.4) [U-Turn Pivot Complete].")
-            self.log("[MOCK camera] Keyframe Frame 200: Location = (0.2, -0.5, 1.7) [Gaze Lock].")
+            self.log("[MOCK camera] Created camera object 'SentientCamera' at (0.0, -1.5, 1.5).")
+            self.log("[MOCK camera] Keyframe Frame 1: Location = (0.0, -1.5, 1.5) [In Front Starting Pan].")
+            self.log("[MOCK camera] Keyframe Frame 80: Location = (-1.2, 1.0, 1.5) [Glide to Right Side].")
+            self.log("[MOCK camera] Keyframe Frame 140: Location = (-0.9, 2.0, 1.5) [Side Profile Arrived].")
+            self.log("[MOCK camera] Keyframe Frame 200: Location = (-0.45, 2.0, 1.52) [Macro Ear Close-up].")
             self.log("[MOCK camera] Track-To Constraint active: Focusing lens on Character Cylinder Stand-In.")
 
     def setup_render_output(self):
